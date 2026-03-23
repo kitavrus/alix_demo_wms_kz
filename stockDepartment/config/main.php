@@ -156,6 +156,9 @@ return [
 		'mobile' => [
 			'class' => 'stockDepartment\modules\mobile\Mobile',
 		],
+        'kaspi' => [
+            'class' => 'stockDepartment\modules\kaspi\kaspi',
+        ],
     ],
     'components' => [
 //        'formatter' => [
