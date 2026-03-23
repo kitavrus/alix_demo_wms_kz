@@ -27,8 +27,8 @@ class StockSearch extends Stock
     {
         return [
             [['address_sort_order','id', 'inbound_order_id', 'outbound_order_id', 'client_id', 'warehouse_id', 'product_id', 'condition_type', 'status', 'status_lost', 'status_availability', 'created_user_id', 'updated_user_id', 'created_at', 'updated_at', 'deleted'], 'integer'],
-            [['product_name', 'product_barcode', 'product_model', 'product_sku', 'box_barcode', 'primary_address', 'secondary_address', 'order_number', 'parent_order_number'], 'safe'],
-			 [['inbound_client_box'], 'string'],
+            [['product_name', 'product_barcode', 'product_model', 'product_sku', 'box_barcode', 'primary_address', 'secondary_address', 'order_number', 'parent_order_number', 'kaspi_stock_status', 'kaspi_order_status'], 'safe'],
+			 [['inbound_client_box', 'kaspi_stock_status', 'kaspi_order_status'], 'string'],
 			 
         ];
     }
@@ -81,6 +81,8 @@ class StockSearch extends Stock
             'status' => $this->status,
             'status_availability' => $this->status_availability,
             'status_lost' => $this->status_lost,
+            'kaspi_stock_status' => $this->kaspi_stock_status,
+            'kaspi_order_status' => $this->kaspi_order_status,
             'created_user_id' => $this->created_user_id,
             'updated_user_id' => $this->updated_user_id,
             'created_at' => $this->created_at,
