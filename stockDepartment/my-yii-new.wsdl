@@ -1,0 +1,783 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions
+        name="EDIService"
+        targetNamespace="http://schemas.datacontract.org/2004/07/MieleExchangeService"
+        xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+        xmlns:wsap="http://schemas.xmlsoap.org/ws/2004/08/addressing/policy"
+        xmlns:wsa10="http://www.w3.org/2005/08/addressing"
+        xmlns:tns="http://schemas.datacontract.org/2004/07/MieleExchangeService"
+        xmlns:msc="http://schemas.microsoft.com/ws/2005/12/wsdl/contract"
+        xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/"
+        xmlns:wsx="http://schemas.xmlsoap.org/ws/2004/09/mex"
+        xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+        xmlns:wsam="http://www.w3.org/2007/05/addressing/metadata"
+        xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing"
+        xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy"
+        xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl"
+        xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/"
+        xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+        xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <wsdl:types>
+        <xs:schema elementFormDefault="qualified" targetNamespace="http://schemas.datacontract.org/2004/07/MieleExchangeService" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+            <xs:element name="UpdateMATMAS">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="list" type="tns:НоменклатураСписок"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:complexType name="НоменклатураСписок">
+                <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="Запись" type="tns:Номенклатура"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:complexType name="Номенклатура">
+                <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="1" name="МатНомер" type="xs:string"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Артикул" type="xs:string"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Наименование" type="xs:string"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="ВесБрутто" type="xs:decimal"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="ВесНетто" type="xs:decimal"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="Объем" type="xs:decimal"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="Длина" type="xs:decimal"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="Ширина" type="xs:decimal"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="Высота" type="xs:decimal"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="EAN11" type="xs:string"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="УровеньШтабелирования" type="xs:int"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="УчетПоФабричнымНомерам" type="xs:boolean"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="УчетПоКоммерческимНомерам" type="xs:boolean"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="УчетПоСрокамГодности" type="xs:boolean"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="ТребуетсяЭтикетирование" type="xs:boolean"/>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="СпецификацияДополнительныхМатериалов" type="tns:СтрокаСпецификацииДополнительныхМатериалов"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:complexType name="СтрокаСпецификацииДополнительныхМатериалов">
+                <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="1" name="МатНомер" type="xs:string"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Артикул" type="xs:string"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:element name="UpdateMATMASResponse">
+                <xs:complexType/>
+            </xs:element>
+            <xs:element name="SendInboundOrder">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="order" type="tns:ЗаявкаНаПриемку"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:complexType name="ЗаявкаНаПриемку">
+                <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Идентификатор" type="xs:ID"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="НомерДокументаПрообраза" type="xs:string"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="СтрочноеПредставлениеДокументаПрообраза" type="xs:string"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="ЗонаПриемки" nillable="true" type="xs:int"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="ТребуетсяЭтикетирование" type="xs:boolean"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="Дата" nillable="true" type="xs:dateTime"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="Статус" type="xs:int"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="ОтОсновногоПоставщика" type="xs:boolean"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Комментарий" type="xs:string"/>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="МастерДанныеНоменклатура" type="tns:Номенклатура"/>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="Спецификация" type="tns:СтрокаСпецификации"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:complexType name="СтрокаСпецификации">
+                <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="1" name="МатНомер" type="xs:string"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Артикул" type="xs:string"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="ФабНомер" type="xs:string"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="КомНомер" type="xs:string"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="НомерГТД" type="xs:string"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="Количество" type="xs:decimal"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="КоличествоНеадаптированное" type="xs:decimal"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="КоличествоБрак" type="xs:decimal"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:element name="SendInboundOrderResponse">
+                <xs:complexType/>
+            </xs:element>
+            <xs:element name="CancelInboundOrder">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="id" type="xs:ID"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="CancelInboundOrderResponse">
+                <xs:complexType/>
+            </xs:element>
+            <xs:element name="GetInboundOrders">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="idList" type="tns:СписокИдентификаторов"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:complexType name="СписокИдентификаторов">
+                <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="Идентификатор" type="xs:ID"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:element name="GetInboundOrdersResponse">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="GetInboundOrdersResult" type="tns:ЗаявкаНаПриемкуСписок"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:complexType name="ЗаявкаНаПриемкуСписок">
+                <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="Запись" type="tns:ЗаявкаНаПриемку"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:element name="GetChangedInboundOrders">
+                <xs:complexType/>
+            </xs:element>
+            <xs:element name="GetChangedInboundOrdersResponse">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="GetChangedInboundOrdersResult" type="tns:ЗаявкаНаПриемкуСписок"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="MarkAsUnchangedInboundOrder">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="id" type="xs:ID"/>
+                        <xs:element minOccurs="1" maxOccurs="1" name="status" type="xs:int"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="MarkAsUnchangedInboundOrderResponse">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="1" maxOccurs="1" name="MarkAsUnchangedInboundOrderResult" type="xs:boolean"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="SendOutboundOrder">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="order" type="tns:ЗаявкаНаОтгрузку"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:complexType name="ЗаявкаНаОтгрузку">
+                <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Идентификатор" type="xs:ID"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="НомерДокументаПрообраза" type="xs:string"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="СтрочноеПредставлениеДокументаПрообраза" type="xs:string"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="ЗонаОтгрузки" nillable="true" type="xs:int"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="Дата" nillable="true" type="xs:dateTime"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="Статус" type="xs:int"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Комментарий" type="xs:string"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="СписаниеПодПеремещение" type="xs:ID"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Получатель" type="xs:string"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Адрес" type="xs:string"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="ВидОтгрузки" nillable="true" type="xs:int"/>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="Спецификация" type="tns:СтрокаСпецификации"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:element name="SendOutboundOrderResponse">
+                <xs:complexType/>
+            </xs:element>
+            <xs:element name="CancelOutboundOrder">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="id" type="xs:ID"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="CancelOutboundOrderResponse">
+                <xs:complexType/>
+            </xs:element>
+            <xs:element name="GetOutboundOrders">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="idList" type="tns:СписокИдентификаторов"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="GetOutboundOrdersResponse">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="GetOutboundOrdersResult" type="tns:ЗаявкаНаОтгрузкуСписок"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:complexType name="ЗаявкаНаОтгрузкуСписок">
+                <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="Запись" type="tns:ЗаявкаНаОтгрузку"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:element name="GetChangedOutboundOrders">
+                <xs:complexType/>
+            </xs:element>
+            <xs:element name="GetChangedOutboundOrdersResponse">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="GetChangedOutboundOrdersResult" type="tns:ЗаявкаНаОтгрузкуСписок"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="MarkAsUnchangedOutboundOrder">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="id" type="xs:ID"/>
+                        <xs:element minOccurs="1" maxOccurs="1" name="status" type="xs:int"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="MarkAsUnchangedOutboundOrderResponse">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="1" maxOccurs="1" name="MarkAsUnchangedOutboundOrderResult" type="xs:boolean"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="SendMovementOrder">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="order" type="tns:ЗаявкаНаПеремещение"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:complexType name="ЗаявкаНаПеремещение">
+                <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Идентификатор" type="xs:ID"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="НомерДокументаПрообраза" type="xs:string"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="СтрочноеПредставлениеДокументаПрообраза" type="xs:string"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="ЗонаПриемки" nillable="true" type="xs:int"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="ЗонаОтправки" nillable="true" type="xs:int"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="Дата" nillable="true" type="xs:dateTime"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="Статус" type="xs:int"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Комментарий" type="xs:string"/>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="Спецификация" type="tns:СтрокаСпецификации"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:element name="SendMovementOrderResponse">
+                <xs:complexType/>
+            </xs:element>
+            <xs:element name="CancelMovementOrder">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="id" type="xs:ID"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="CancelMovementOrderResponse">
+                <xs:complexType/>
+            </xs:element>
+            <xs:element name="GetMovementOrders">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="idList" type="tns:СписокИдентификаторов"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="GetMovementOrdersResponse">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="GetMovementOrdersResult" type="tns:ЗаявкаНаПеремещениеСписок"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:complexType name="ЗаявкаНаПеремещениеСписок">
+                <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="Запись" type="tns:ЗаявкаНаПеремещение"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:element name="GetChangedMovementOrders">
+                <xs:complexType/>
+            </xs:element>
+            <xs:element name="GetChangedMovementOrdersResponse">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="GetChangedMovementOrdersResult" type="tns:ЗаявкаНаПеремещениеСписок"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="MarkAsUnchangedMovementOrder">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="id" type="xs:ID"/>
+                        <xs:element minOccurs="1" maxOccurs="1" name="status" type="xs:int"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="MarkAsUnchangedMovementOrderResponse">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="1" maxOccurs="1" name="MarkAsUnchangedMovementOrderResult" type="xs:boolean"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="GetStock">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="1" maxOccurs="1" name="date" type="xs:dateTime"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="GetStockResponse">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="GetStockResult" type="tns:Остатки"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:complexType name="Остатки">
+                <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="Запись" type="tns:Остаток"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:complexType name="Остаток">
+                <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="1" name="МатНомер" type="xs:string"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Артикул" type="xs:string"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="Зона" type="xs:int"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="Количество" type="xs:decimal"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:element name="GetSerialStock">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="1" maxOccurs="1" name="date" type="xs:dateTime"/>
+                        <xs:element minOccurs="0" maxOccurs="1" name="materialNo" type="xs:string"/>
+                        <xs:element minOccurs="0" maxOccurs="1" name="articul" type="xs:string"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="GetSerialStockResponse">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="GetSerialStockResult" type="tns:ФабричныеНомераПоЗонам"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:complexType name="ФабричныеНомераПоЗонам">
+                <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="Запись" type="tns:НахождениеФабричногоНомера"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:complexType name="НахождениеФабричногоНомера">
+                <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="1" name="МатНомер" type="xs:string"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Артикул" type="xs:string"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="Зона" type="xs:int"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="ФабНомер" type="xs:string"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:element name="GetProductMovement">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="1" maxOccurs="1" name="beginDate" type="xs:dateTime"/>
+                        <xs:element minOccurs="1" maxOccurs="1" name="endDate" type="xs:dateTime"/>
+                        <xs:element minOccurs="0" maxOccurs="1" name="materialNo" type="xs:string"/>
+                        <xs:element minOccurs="0" maxOccurs="1" name="articul" type="xs:string"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="GetProductMovementResponse">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element minOccurs="0" maxOccurs="1" name="GetProductMovementResult" type="tns:ДвиженияНоменклатуры"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:complexType name="ДвиженияНоменклатуры">
+                <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="Запись" type="tns:Движение"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:complexType name="Движение">
+                <xs:sequence>
+                    <xs:element minOccurs="1" maxOccurs="1" name="ДатаВремя" type="xs:dateTime"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="МатНомер" type="xs:string"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Артикул" type="xs:string"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="Зона" type="xs:int"/>
+                    <xs:element minOccurs="0" maxOccurs="1" name="IDдокумента" type="xs:string"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="Приход" type="xs:decimal"/>
+                    <xs:element minOccurs="1" maxOccurs="1" name="Расход" type="xs:decimal"/>
+                </xs:sequence>
+            </xs:complexType>
+        </xs:schema>
+    </wsdl:types>
+
+    <wsdl:message name="EDIService_UpdateMATMAS_InputMessage">
+        <wsdl:part name="parameters" element="tns:UpdateMATMAS"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_UpdateMATMAS_OutputMessage">
+        <wsdl:part name="parameters" element="tns:UpdateMATMASResponse"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_SendInboundOrder_InputMessage">
+        <wsdl:part name="parameters" element="tns:SendInboundOrder"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_SendInboundOrder_OutputMessage">
+        <wsdl:part name="parameters" element="tns:SendInboundOrderResponse"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_CancelInboundOrder_InputMessage">
+        <wsdl:part name="parameters" element="tns:CancelInboundOrder"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_CancelInboundOrder_OutputMessage">
+        <wsdl:part name="parameters" element="tns:CancelInboundOrderResponse"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_GetInboundOrders_InputMessage">
+        <wsdl:part name="parameters" element="tns:GetInboundOrders"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_GetInboundOrders_OutputMessage">
+        <wsdl:part name="parameters" element="tns:GetInboundOrdersResponse"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_GetChangedInboundOrders_InputMessage">
+        <wsdl:part name="parameters" element="tns:GetChangedInboundOrders"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_GetChangedInboundOrders_OutputMessage">
+        <wsdl:part name="parameters" element="tns:GetChangedInboundOrdersResponse"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_MarkAsUnchangedInboundOrder_InputMessage">
+        <wsdl:part name="parameters" element="tns:MarkAsUnchangedInboundOrder"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_MarkAsUnchangedInboundOrder_OutputMessage">
+        <wsdl:part name="parameters" element="tns:MarkAsUnchangedInboundOrderResponse"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_SendOutboundOrder_InputMessage">
+        <wsdl:part name="parameters" element="tns:SendOutboundOrder"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_SendOutboundOrder_OutputMessage">
+        <wsdl:part name="parameters" element="tns:SendOutboundOrderResponse"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_CancelOutboundOrder_InputMessage">
+        <wsdl:part name="parameters" element="tns:CancelOutboundOrder"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_CancelOutboundOrder_OutputMessage">
+        <wsdl:part name="parameters" element="tns:CancelOutboundOrderResponse"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_GetOutboundOrders_InputMessage">
+        <wsdl:part name="parameters" element="tns:GetOutboundOrders"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_GetOutboundOrders_OutputMessage">
+        <wsdl:part name="parameters" element="tns:GetOutboundOrdersResponse"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_GetChangedOutboundOrders_InputMessage">
+        <wsdl:part name="parameters" element="tns:GetChangedOutboundOrders"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_GetChangedOutboundOrders_OutputMessage">
+        <wsdl:part name="parameters" element="tns:GetChangedOutboundOrdersResponse"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_MarkAsUnchangedOutboundOrder_InputMessage">
+        <wsdl:part name="parameters" element="tns:MarkAsUnchangedOutboundOrder"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_MarkAsUnchangedOutboundOrder_OutputMessage">
+        <wsdl:part name="parameters" element="tns:MarkAsUnchangedOutboundOrderResponse"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_SendMovementOrder_InputMessage">
+        <wsdl:part name="parameters" element="tns:SendMovementOrder"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_SendMovementOrder_OutputMessage">
+        <wsdl:part name="parameters" element="tns:SendMovementOrderResponse"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_CancelMovementOrder_InputMessage">
+        <wsdl:part name="parameters" element="tns:CancelMovementOrder"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_CancelMovementOrder_OutputMessage">
+        <wsdl:part name="parameters" element="tns:CancelMovementOrderResponse"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_GetMovementOrders_InputMessage">
+        <wsdl:part name="parameters" element="tns:GetMovementOrders"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_GetMovementOrders_OutputMessage">
+        <wsdl:part name="parameters" element="tns:GetMovementOrdersResponse"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_GetChangedMovementOrders_InputMessage">
+        <wsdl:part name="parameters" element="tns:GetChangedMovementOrders"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_GetChangedMovementOrders_OutputMessage">
+        <wsdl:part name="parameters" element="tns:GetChangedMovementOrdersResponse"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_MarkAsUnchangedMovementOrder_InputMessage">
+        <wsdl:part name="parameters" element="tns:MarkAsUnchangedMovementOrder"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_MarkAsUnchangedMovementOrder_OutputMessage">
+        <wsdl:part name="parameters" element="tns:MarkAsUnchangedMovementOrderResponse"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_GetStock_InputMessage">
+        <wsdl:part name="parameters" element="tns:GetStock"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_GetStock_OutputMessage">
+        <wsdl:part name="parameters" element="tns:GetStockResponse"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_GetSerialStock_InputMessage">
+        <wsdl:part name="parameters" element="tns:GetSerialStock"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_GetSerialStock_OutputMessage">
+        <wsdl:part name="parameters" element="tns:GetSerialStockResponse"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_GetProductMovement_InputMessage">
+        <wsdl:part name="parameters" element="tns:GetProductMovement"/>
+    </wsdl:message>
+    <wsdl:message name="EDIService_GetProductMovement_OutputMessage">
+        <wsdl:part name="parameters" element="tns:GetProductMovementResponse"/>
+    </wsdl:message>
+
+    <wsdl:portType name="EDIService">
+        <wsdl:operation name="UpdateMATMAS">
+            <wsdl:input wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#UpdateMATMAS" message="tns:EDIService_UpdateMATMAS_InputMessage"/>
+            <wsdl:output wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#UpdateMATMASResponse" message="tns:EDIService_UpdateMATMAS_OutputMessage"/>
+        </wsdl:operation>
+        <wsdl:operation name="SendInboundOrder">
+            <wsdl:input wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#SendInboundOrder" message="tns:EDIService_SendInboundOrder_InputMessage"/>
+            <wsdl:output wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#SendInboundOrderResponse" message="tns:EDIService_SendInboundOrder_OutputMessage"/>
+        </wsdl:operation>
+        <wsdl:operation name="CancelInboundOrder">
+            <wsdl:input wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#CancelInboundOrder" message="tns:EDIService_CancelInboundOrder_InputMessage"/>
+            <wsdl:output wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#CancelInboundOrderResponse" message="tns:EDIService_CancelInboundOrder_OutputMessage"/>
+        </wsdl:operation>
+        <wsdl:operation name="GetInboundOrders">
+            <wsdl:input wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#GetInboundOrders" message="tns:EDIService_GetInboundOrders_InputMessage"/>
+            <wsdl:output wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#GetInboundOrdersResponse" message="tns:EDIService_GetInboundOrders_OutputMessage"/>
+        </wsdl:operation>
+        <wsdl:operation name="GetChangedInboundOrders">
+            <wsdl:input wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#GetChangedInboundOrders" message="tns:EDIService_GetChangedInboundOrders_InputMessage"/>
+            <wsdl:output wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#GetChangedInboundOrdersResponse" message="tns:EDIService_GetChangedInboundOrders_OutputMessage"/>
+        </wsdl:operation>
+        <wsdl:operation name="MarkAsUnchangedInboundOrder">
+            <wsdl:input wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#MarkAsUnchangedInboundOrder" message="tns:EDIService_MarkAsUnchangedInboundOrder_InputMessage"/>
+            <wsdl:output wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#MarkAsUnchangedInboundOrderResponse" message="tns:EDIService_MarkAsUnchangedInboundOrder_OutputMessage"/>
+        </wsdl:operation>
+        <wsdl:operation name="SendOutboundOrder">
+            <wsdl:input wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#SendOutboundOrder" message="tns:EDIService_SendOutboundOrder_InputMessage"/>
+            <wsdl:output wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#SendOutboundOrderResponse" message="tns:EDIService_SendOutboundOrder_OutputMessage"/>
+        </wsdl:operation>
+        <wsdl:operation name="CancelOutboundOrder">
+            <wsdl:input wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#CancelOutboundOrder" message="tns:EDIService_CancelOutboundOrder_InputMessage"/>
+            <wsdl:output wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#CancelOutboundOrderResponse" message="tns:EDIService_CancelOutboundOrder_OutputMessage"/>
+        </wsdl:operation>
+        <wsdl:operation name="GetOutboundOrders">
+            <wsdl:input wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#GetOutboundOrders" message="tns:EDIService_GetOutboundOrders_InputMessage"/>
+            <wsdl:output wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#GetOutboundOrdersResponse" message="tns:EDIService_GetOutboundOrders_OutputMessage"/>
+        </wsdl:operation>
+        <wsdl:operation name="GetChangedOutboundOrders">
+            <wsdl:input wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#GetChangedOutboundOrders" message="tns:EDIService_GetChangedOutboundOrders_InputMessage"/>
+            <wsdl:output wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#GetChangedOutboundOrdersResponse" message="tns:EDIService_GetChangedOutboundOrders_OutputMessage"/>
+        </wsdl:operation>
+        <wsdl:operation name="MarkAsUnchangedOutboundOrder">
+            <wsdl:input wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#MarkAsUnchangedOutboundOrder" message="tns:EDIService_MarkAsUnchangedOutboundOrder_InputMessage"/>
+            <wsdl:output wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#MarkAsUnchangedOutboundOrderResponse" message="tns:EDIService_MarkAsUnchangedOutboundOrder_OutputMessage"/>
+        </wsdl:operation>
+        <wsdl:operation name="SendMovementOrder">
+            <wsdl:input wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#SendMovementOrder" message="tns:EDIService_SendMovementOrder_InputMessage"/>
+            <wsdl:output wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#SendMovementOrderResponse" message="tns:EDIService_SendMovementOrder_OutputMessage"/>
+        </wsdl:operation>
+        <wsdl:operation name="CancelMovementOrder">
+            <wsdl:input wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#CancelMovementOrder" message="tns:EDIService_CancelMovementOrder_InputMessage"/>
+            <wsdl:output wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#CancelMovementOrderResponse" message="tns:EDIService_CancelMovementOrder_OutputMessage"/>
+        </wsdl:operation>
+        <wsdl:operation name="GetMovementOrders">
+            <wsdl:input wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#GetMovementOrders" message="tns:EDIService_GetMovementOrders_InputMessage"/>
+            <wsdl:output wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#GetMovementOrdersResponse" message="tns:EDIService_GetMovementOrders_OutputMessage"/>
+        </wsdl:operation>
+        <wsdl:operation name="GetChangedMovementOrders">
+            <wsdl:input wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#GetChangedMovementOrders" message="tns:EDIService_GetChangedMovementOrders_InputMessage"/>
+            <wsdl:output wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#GetChangedMovementOrdersResponse" message="tns:EDIService_GetChangedMovementOrders_OutputMessage"/>
+        </wsdl:operation>
+        <wsdl:operation name="MarkAsUnchangedMovementOrder">
+            <wsdl:input wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#MarkAsUnchangedMovementOrder" message="tns:EDIService_MarkAsUnchangedMovementOrder_InputMessage"/>
+            <wsdl:output wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#MarkAsUnchangedMovementOrderResponse" message="tns:EDIService_MarkAsUnchangedMovementOrder_OutputMessage"/>
+        </wsdl:operation>
+        <wsdl:operation name="GetStock">
+            <wsdl:input wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#GetStock" message="tns:EDIService_GetStock_InputMessage"/>
+            <wsdl:output wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#GetStockResponse" message="tns:EDIService_GetStock_OutputMessage"/>
+        </wsdl:operation>
+        <wsdl:operation name="GetSerialStock">
+            <wsdl:input wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#GetSerialStock" message="tns:EDIService_GetSerialStock_InputMessage"/>
+            <wsdl:output wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#GetSerialStockResponse" message="tns:EDIService_GetSerialStock_OutputMessage"/>
+        </wsdl:operation>
+        <wsdl:operation name="GetProductMovement">
+            <wsdl:input wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#GetProductMovement" message="tns:EDIService_GetProductMovement_InputMessage"/>
+            <wsdl:output wsaw:Action="http://wms-demo-dev.nmdx.kz/miel/hello#GetProductMovementResponse" message="tns:EDIService_GetProductMovement_OutputMessage"/>
+        </wsdl:operation>
+    </wsdl:portType>
+
+    <wsdl:binding name="BasicHttpBinding_EDIService" type="tns:EDIService">
+        <soap:binding transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="UpdateMATMAS">
+            <soap:operation soapAction="http://wms-demo-dev.nmdx.kz/miel/hello#UpdateMATMAS" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="SendInboundOrder">
+            <soap:operation soapAction="http://wms-demo-dev.nmdx.kz/miel/hello#SendInboundOrder" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="CancelInboundOrder">
+            <soap:operation soapAction="http://wms-demo-dev.nmdx.kz/miel/hello#CancelInboundOrder" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="GetInboundOrders">
+            <soap:operation soapAction="http://wms-demo-dev.nmdx.kz/miel/hello#GetInboundOrders" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="GetChangedInboundOrders">
+            <soap:operation soapAction="http://wms-demo-dev.nmdx.kz/miel/hello#GetChangedInboundOrders" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="MarkAsUnchangedInboundOrder">
+            <soap:operation soapAction="http://wms-demo-dev.nmdx.kz/miel/hello#MarkAsUnchangedInboundOrder" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="SendOutboundOrder">
+            <soap:operation soapAction="http://wms-demo-dev.nmdx.kz/miel/hello#SendOutboundOrder" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="CancelOutboundOrder">
+            <soap:operation soapAction="http://wms-demo-dev.nmdx.kz/miel/hello#CancelOutboundOrder" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="GetOutboundOrders">
+            <soap:operation soapAction="http://wms-demo-dev.nmdx.kz/miel/hello#GetOutboundOrders" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="GetChangedOutboundOrders">
+            <soap:operation soapAction="http://wms-demo-dev.nmdx.kz/miel/hello#GetChangedOutboundOrders" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="MarkAsUnchangedOutboundOrder">
+            <soap:operation soapAction="http://wms-demo-dev.nmdx.kz/miel/hello#MarkAsUnchangedOutboundOrder" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="SendMovementOrder">
+            <soap:operation soapAction="http://wms-demo-dev.nmdx.kz/miel/hello#SendMovementOrder" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="CancelMovementOrder">
+            <soap:operation soapAction="http://wms-demo-dev.nmdx.kz/miel/hello#CancelMovementOrder" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="GetMovementOrders">
+            <soap:operation soapAction="http://wms-demo-dev.nmdx.kz/miel/hello#GetMovementOrders" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="GetChangedMovementOrders">
+            <soap:operation soapAction="http://wms-demo-dev.nmdx.kz/miel/hello#GetChangedMovementOrders" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="MarkAsUnchangedMovementOrder">
+            <soap:operation soapAction="http://wms-demo-dev.nmdx.kz/miel/hello#MarkAsUnchangedMovementOrder" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="GetStock">
+            <soap:operation soapAction="http://wms-demo-dev.nmdx.kz/miel/hello#GetStock" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="GetSerialStock">
+            <soap:operation soapAction="http://wms-demo-dev.nmdx.kz/miel/hello#GetSerialStock" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="GetProductMovement">
+            <soap:operation soapAction="http://wms-demo-dev.nmdx.kz/miel/hello#GetProductMovement" style="document"/>
+            <wsdl:input>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+
+    <wsdl:service name="EDIService">
+        <wsdl:port name="BasicHttpBinding_EDIService" binding="tns:BasicHttpBinding_EDIService">
+            <soap:address location="http://wms-demo-dev.nmdx.kz/miel/hello"/>
+        </wsdl:port>
+    </wsdl:service>
+
+</wsdl:definitions>

@@ -1,0 +1,25 @@
+﻿<?php
+return [
+    'Load outbound order API' => 'DeFacto siparişini indir',
+    'Confirm outbound order API' => 'DeFacto siparişini onayla',
+    'Outbound order' => 'Sipariş',
+    'Outbound print pick list' => 'Toplama listesini yazdır',
+    'Begin end picking process' => 'Toplama başlangıçı ve sonu',
+    'Upload outbound order DeFacto API [1]' => 'DeFacto çıkış irsaliyesini yükle [1]',
+    'Outbound print pick list [2]' => 'Toplama listesini yazdır [2]',
+    'Print Picking List' => 'Toplama listesini yazdır',
+    'Begin end picking process [3]' => 'Okutma başlangıçı ve bitişini fix et [3]',
+    'Scanning process [4]' => 'Okutma [4]',
+    'Download  outbound order DeFacto API [5]' => 'DeFacto şipariş irsaliyesini indir [5]',
+    'Clear Box' => 'Koliyi boşalt',
+    'Clear product in box' => 'Koli içi ürünü sil',
+    'List differences' => 'Fark listesi',
+    'Print box label' => 'Koli etiketini yazdır',
+    'Print' => 'Yazdır',
+    'Complete order' => 'Tamamlandı',
+    'Download file' => 'Dosyayı indir',
+    'Download file' => 'Sisteme yükle',
+    'Cancel load' => 'Yüklemeyi iptal et',
+
+//    'End picking process' => 'Toplamayı bitir ',
+];

@@ -1,0 +1,63 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: kitavrus
+ * Date: 29.09.14
+ * Time: 10:54
+ */
+
+namespace stockDepartment\modules\wms\models\defacto;
+
+use common\modules\crossDock\models\CrossDock;
+use yii\base\Model;
+use Yii;
+
+class AddItemCrossDockForm extends Model {
+
+    public $client_id;
+    public $order_number;
+    public $route_to;
+    public $number_places_qty;
+    public $box_m3;
+
+    /*
+    *
+    * */
+    public function attributeLabels()
+    {
+        return [
+            'client_id' => Yii::t('inbound/forms', 'Client'),
+            'order_number' => Yii::t('inbound/forms', 'Order number'),
+            'route_to' => Yii::t('transportLogistics/forms', 'Route To'),
+            'box_m3' => Yii::t('transportLogistics/forms', 'Mc'),
+            'number_places_qty' => Yii::t('transportLogistics/forms', 'Number Places'),
+        ];
+    }
+    /*
+     *
+     * */
+    public function rules()
+    {
+        return [
+            [['client_id','order_number','route_to','box_m3','number_places_qty'], 'required'],
+            [['client_id','route_to','number_places_qty'], 'integer'],
+            [['box_m3'], 'number'],
+            [['route_to'], 'validateUniqueRouteTo'],
+        ];
+    }
+
+    /*
+     * Check unique route_to
+     *
+     * */
+    public function validateUniqueRouteTo($attribute, $params)
+    {
+        $route_to = $this->route_to;
+        $order_number = $this->order_number;
+        $client_id = $this->client_id;
+
+        if(CrossDock::find()->where(['to_point_id'=>$route_to,'client_id'=>$client_id,'party_number'=> $order_number])->exists()) {
+            $this->addError('additemcrossdockform-route_to', 'Этот магазин уже есть в этом заказе');
+        }
+    }
+}

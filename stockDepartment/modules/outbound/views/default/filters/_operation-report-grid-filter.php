@@ -1,0 +1,48 @@
+<?php
+
+use yii\helpers\Html;
+use yii\widgets\ActiveForm;
+use kartik\daterange\DateRangePicker;
+use kartik\select2\Select2;
+use common\modules\client\models\Client;
+use yii\helpers\ArrayHelper;
+
+/* @var $this yii\web\View */
+/* @var $model stockDepartment\modules\kpiSettings\models\KpiSettingSearch */
+/* @var $form yii\widgets\ActiveForm */
+?>
+
+<div class="outbound-orders-grid-search">
+
+<?php $form = ActiveForm::begin([
+    'method' => 'get',
+    'id' => 'outbound-orders-grid-search-form',
+]); ?>
+
+<table class="table" width="60%" cellspacing="10">
+    <tr>
+        <td width="20%">
+            <?= $form->field($model, 'client_id')->dropDownList(ArrayHelper::map(Client::findAll(['status' => Client::STATUS_ACTIVE]), 'id', 'title'),['prompt' =>Yii::t('transportLogistics/titles', 'Select client')]) ?>
+        </td>
+        <td width="20%">
+            <?= $form->field($model, 'parent_order_number')->label(Yii::t('outbound/forms', 'Parent order number')) ?>
+        </td>
+        <td width="20%">
+            <?= $form->field($model, 'order_number')->label(Yii::t('outbound/forms', 'Order number')) ?>
+        </td>
+        <td width="20%">
+            <?= $form->field($model, 'status')->dropDownList($model->getStatusArray(), ['prompt'=>'Выберите статус']) ?>
+        </td>
+        <td width="20%">
+            <?= $form->field($model, 'order_type')->dropDownList(['1'=>'RPT','2'=>'CROSS-DOCK','3'=>'Приход'], ['prompt'=>'Выберите статус']) ?>
+        </td>
+    </tr>
+</table>
+
+<div class="form-group">
+    <?= Html::submitButton(Yii::t('buttons', 'Search'), ['class' => 'btn btn-primary']) ?>
+<!--    --><?//= Html::a(Yii::t('buttons', 'Очистить поиск'), ['outbound-orders'], ['class' => 'btn btn-primary']) ?>
+    <?= Html::a(Yii::t('buttons', 'Очистить поиск'), $clearRoute, ['class' => 'btn btn-primary']) ?>
+</div>
+<?php ActiveForm::end(); ?>
+</div>

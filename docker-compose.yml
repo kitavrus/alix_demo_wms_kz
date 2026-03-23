@@ -1,0 +1,73 @@
+version: '3'
+
+services:
+  php:
+    # для win, linux yiisoftware/yii2-php:5.6-apache
+    # для macOS yiisoftware/yii2-php:7.0-apache
+    # image: yiisoftware/yii2-php:5.6-apache
+    image: yiisoftware/yii2-php:7.0-apache
+    volumes:
+      - ./:/var/www/html:delegated
+     # - ./docker/php/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
+      - ./docker/apache/000-default.conf:/etc/apache2/sites-available/000-default.conf
+    environment:
+      - PHP_ENABLE_XDEBUG=1
+      - PHP_IDE_CONFIG=serverName=MyTestServer
+    ports:
+      - '8080:80'
+      - '8081:81'
+    networks:
+      - default
+    depends_on:
+      - db
+
+  dumper:
+    build:
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/var/www/html:delegated
+      - ./:/var/www/html
+      - ./docker/php/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
+      - ./docker/apache/000-default.conf:/etc/apache2/sites-available/000-default.conf
+    ports:
+      - '8082:82'
+    networks:
+      - default
+    depends_on:
+      - db
+
+  db:
+    # для win, linux mysql:5.7
+    # для macOS biarms/mysql:5.7
+    image: biarms/mysql:5.7
+    restart: always
+    environment:
+      - MYSQL_DATABASE=wms_kz
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_ROOT_PASSWORD=password
+    ports:
+      - '33060:3306'
+    expose:
+      - '3306'
+    volumes:
+      - mysql:/var/lib/mysql
+      - ./docker/sql/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./docker/mysql-dump:/docker-entrypoint-initdb.d
+    networks:
+      - default
+
+  adminer:
+    image: adminer:4.7.9
+    restart: always
+    ports:
+      - '8085:8080'
+    environment:
+      - ADMINER_DEFAULT_SERVER=db
+    networks:
+      - default
+    depends_on:
+      - db
+
+volumes:
+  mysql:

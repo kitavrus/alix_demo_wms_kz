@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChinaAutoPro - Кредит на авто из Китая без первоначального взноса</title>
+    <meta name="description" content="Покупка автомобилей из Китая в Россию с выгодными условиями кредита. Одобрение за 1 час, ставка от 5,9%, без первоначального взноса.">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "AutoDealer",
+      "name": "ChinaAutoPro",
+      "url": "https://chinaautopro.kz",
+      "telephone": "+7 (777) 123-45-67",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "ул. Примерная, 15",
+        "addressLocality": "Алматы",
+        "addressCountry": "KZ"
+      },
+      "openingHours": "Mo-Su 09:00-20:00"
+    }
+    </script>
+    <style>
+        :root {
+            --primary-blue: #1a3a6c;
+            --secondary-green: #28a745;
+            --accent-orange: #fd7e14;
+            --light-gray: #f8f9fa;
+            --dark-gray: #343a40;
+            --white: #ffffff;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--white);
+            color: var(--dark-gray);
+            line-height: 1.6;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* Header Styles */
+        header {
+            background-color: var(--white);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-blue);
+        }
+        
+        .logo span {
+            color: var(--accent-orange);
+        }
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+        }
+        
+        nav ul li {
+            margin: 0 15px;
+        }
+        
+        nav ul li a {
+            text-decoration: none;
+            color: var(--dark-gray);
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        
+        nav ul li a:hover {
+            color: var(--primary-blue);
+        }
+        
+        .phone-number {
+            font-weight: 600;
+            color: var(--primary-blue);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .phone-number:hover {
+            color: var(--accent-orange);
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 25px;
+            background-color: var(--accent-orange);
+            color: var(--white);
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            text-align: center;
+        }
+        
+        .btn:hover {
+            background-color: #e06b0d;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(253, 126, 20, 0.3);
+        }
+        
+        /* Hero Slider Styles */
+        .hero-slider {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            overflow: hidden;
+        }
+        
+        .slides {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.5s ease-in-out;
+        }
+        
+        .slide {
+            min-width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        
+        .slide-image {
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+        }
+        
+        .slide-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(26, 58, 108, 0.8), rgba(26, 58, 108, 0.9));
+        }
+        
+        .slide-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--white);
+            width: 100%;
+            max-width: 800px;
+            padding: 0 20px;
+        }
+        
+        .slide-content h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+        
+        .slide-content p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        
+        .hero-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .btn-secondary {
+            background-color: transparent;
+            border: 2px solid var(--white);
+        }
+        
+        .btn-secondary:hover {
+            background-color: var(--white);
+            color: var(--primary-blue);
+        }
+        
+        .slider-dots {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+        
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .dot.active {
+            background-color: var(--white);
+        }
+        
+        /* Benefits Section */
+        .benefits {
+            padding: 80px 0;
+            background-color: var(--light-gray);
+        }
+        
+        .section-title {
+            text-align: center;
+            margin-bottom: 50px;
+            color: var(--primary-blue);
+        }
+        
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+        }
+        
+        .benefit-card {
+            background: var(--white);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            text-align: center;
+            transition: transform 0.3s;
+        }
+        
+        .benefit-card:hover {
+            transform: translateY(-10px);
+        }
+        
+        .benefit-icon {
+            font-size: 2.5rem;
+            color: var(--secondary-green);
+            margin-bottom: 20px;
+        }
+        
+        .benefit-card h3 {
+            margin-bottom: 15px;
+            color: var(--primary-blue);
+        }
+        
+        /* Catalog Section */
+        .catalog {
+            padding: 80px 0;
+        }
+        
+        .catalog-filters {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+        
+        .filter-btn {
+            padding: 10px 20px;
+            background: var(--light-gray);
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .filter-btn.active, .filter-btn:hover {
+            background: var(--primary-blue);
+            color: var(--white);
+        }
+        
+        .catalog-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+        }
+        
+        .car-card {
+            background: var(--white);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+            cursor: pointer;
+        }
+        
+        .car-card:hover {
+            transform: translateY(-10px);
+        }
+        
+        .car-image {
+            height: 200px;
+            background-size: cover;
+            background-position: center;
+        }
+        
+        .car-info {
+            padding: 20px;
+        }
+        
+        .car-info h3 {
+            margin-bottom: 10px;
+            color: var(--primary-blue);
+        }
+        
+        .car-prices {
+            margin: 15px 0;
+        }
+        
+        .price-full {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary-blue);
+        }
+        
+        .price-credit {
+            font-size: 0.9rem;
+            color: var(--dark-gray);
+        }
+        
+        /* Car Detail Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 2000;
+            overflow: auto;
+        }
+        
+        .modal-content {
+            background: var(--white);
+            margin: 50px auto;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 900px;
+            position: relative;
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 2rem;
+            cursor: pointer;
+            color: var(--dark-gray);
+        }
+        
+        .car-detail-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .car-detail-image {
+            height: 300px;
+            background-size: cover;
+            background-position: center;
+            margin-bottom: 30px;
+            border-radius: 10px;
+        }
+        
+        .specs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .spec-item {
+            background: var(--light-gray);
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .spec-value {
+            font-weight: 700;
+            color: var(--primary-blue);
+            font-size: 1.2rem;
+        }
+        
+        .car-description {
+            margin-bottom: 30px;
+        }
+        
+        .car-description h3 {
+            color: var(--primary-blue);
+            margin-bottom: 15px;
+        }
+        
+        /* Calculator Section */
+        .calculator {
+            padding: 80px 0;
+            background-color: var(--light-gray);
+        }
+        
+        .calculator-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: center;
+        }
+        
+        @media (max-width: 768px) {
+            .calculator-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .calculator-form {
+            background: var(--white);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .slider {
+            flex: 1;
+            height: 8px;
+            -webkit-appearance: none;
+            background: #ddd;
+            border-radius: 4px;
+            outline: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--primary-blue);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .slider-value {
+            min-width: 80px;
+            padding: 5px 10px;
+            background: var(--light-gray);
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .result-box {
+            background: var(--primary-blue);
+            color: var(--white);
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .result-item {
+            margin: 15px 0;
+        }
+        
+        .result-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--accent-orange);
+        }
+        
+        /* Steps Section */
+        .steps {
+            padding: 80px 0;
+        }
+        
+        .steps-container {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            position: relative;
+        }
+        
+        .steps-container::before {
+            content: '';
+            position: absolute;
+            top: 40px;
+            left: 10%;
+            right: 10%;
+            height: 3px;
+            background: var(--primary-blue);
+            z-index: 1;
+        }
+        
+        .step {
+            text-align: center;
+            width: 18%;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .step-number {
+            width: 80px;
+            height: 80px;
+            background: var(--primary-blue);
+            color: var(--white);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0 auto 20px;
+        }
+        
+        .step h3 {
+            margin-bottom: 10px;
+            color: var(--primary-blue);
+        }
+        
+        /* Reviews Section */
+        .reviews {
+            padding: 80px 0;
+            background-color: var(--light-gray);
+        }
+        
+        .reviews-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+        
+        .review-card {
+            background: var(--white);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        
+        .review-video {
+            height: 200px;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            margin-bottom: 20px;
+            border-radius: 10px;
+        }
+        
+        .review-text {
+            margin-top: 20px;
+        }
+        
+        /* FAQ Section */
+        .faq {
+            padding: 80px 0;
+        }
+        
+        .faq-item {
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .faq-question {
+            padding: 20px;
+            background: var(--light-gray);
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .faq-answer {
+            padding: 0 20px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+        
+        .faq-item.active .faq-answer {
+            padding: 20px;
+            max-height: 500px;
+        }
+        
+        /* CTA Section */
+        .cta {
+            padding: 80px 0;
+            background: linear-gradient(135deg, var(--primary-blue), #2c5282);
+            color: var(--white);
+            text-align: center;
+        }
+        
+        .cta h2 {
+            margin-bottom: 20px;
+        }
+        
+        .timer {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-orange);
+            margin: 20px 0;
+        }
+        
+        .cta-form {
+            max-width: 500px;
+            margin: 40px auto 0;
+            display: grid;
+            gap: 20px;
+        }
+        
+        .form-input {
+            padding: 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        
+        .form-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-align: left;
+        }
+        
+        /* Footer */
+        footer {
+            background: var(--dark-gray);
+            color: var(--white);
+            padding: 50px 0 20px;
+        }
+        
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .footer-column h3 {
+            margin-bottom: 20px;
+            color: var(--accent-orange);
+        }
+        
+        .footer-column ul {
+            list-style: none;
+        }
+        
+        .footer-column ul li {
+            margin-bottom: 10px;
+        }
+        
+        .footer-column ul li a {
+            color: #ddd;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .footer-column ul li a:hover {
+            color: var(--accent-orange);
+        }
+        
+        .copyright {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #444;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            nav ul {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            nav ul li {
+                margin: 5px 10px;
+            }
+            
+            .hero-slider {
+                height: 400px;
+            }
+            
+            .slide-content h1 {
+                font-size: 2rem;
+            }
+            
+            .slide-content p {
+                font-size: 1rem;
+            }
+            
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+                gap: 15px;
+            }
+            
+            .steps-container::before {
+                display: none;
+            }
+            
+            .step {
+                width: 100%;
+                margin-bottom: 30px;
+            }
+        }
+    </style>
+</head>
+<body itemscope itemtype="https://schema.org/WebPage">
+    <!-- Header -->
+    <header itemscope itemtype="https://schema.org/WPHeader">
+        <div class="container header-container">
+            <div class="logo">Tachki<span>.kz</span></div>
+            <nav itemscope itemtype="https://schema.org/SiteNavigationElement">
+                <ul>
+                    <li><a href="#catalog-section" itemprop="url">Каталог</a></li>
+                    <li><a href="#promo-section" itemprop="url">Акция</a></li>
+                    <li><a href="#faq-section" itemprop="url">FAQ</a></li>
+                    <li><a href="#contacts-section" itemprop="url">Контакты</a></li>
+                </ul>
+            </nav>
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <a href="tel:+77771234567" class="phone-number" itemprop="telephone">
+                    <i class="fas fa-phone"></i>
+                    +7 (777) 123-45-67
+                </a>
+                <a href="#calculator-section" class="btn">Рассчитать кредит</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Slider -->
+    <section class="hero-slider" itemscope itemtype="https://schema.org/WPHeader">
+        <div class="slides">
+            <div class="slide">
+                <div class="slide-image" style="background-image: url('https://images.unsplash.com/photo-1542362567-b07e54358753?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80');"></div>
+                <div class="slide-overlay"></div>
+                <div class="slide-content">
+                    <h1 itemprop="headline">Кредит на авто без первоначального взноса</h1>
+                    <p itemprop="description">Одобрение за 1 час • Ставка от 5,9% • Без скрытых платежей</p>
+                    <div class="hero-buttons">
+                        <a href="#catalog-section" class="btn">Подобрать авто</a>
+                        <a href="#calculator-section" class="btn btn-secondary">Рассчитать кредит</a>
+                    </div>
+                </div>
+            </div>
+            <div class="slide">
+                <div class="slide-image" style="background-image: url('https://images.unsplash.com/photo-1542362567-b07e54358753?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80');"></div>
+                <div class="slide-overlay"></div>
+                <div class="slide-content">
+                    <h1 itemprop="headline">Гибридные авто по специальной цене</h1>
+                    <p itemprop="description">Экономия до 30% на гибридных автомобилях из Китая</p>
+                    <div class="hero-buttons">
+                        <a href="#catalog-section" class="btn">Выбрать гибрид</a>
+                        <a href="#calculator-section" class="btn btn-secondary">Рассчитать экономию</a>
+                    </div>
+                </div>
+            </div>
+            <div class="slide">
+                <div class="slide-image" style="background-image: url('https://images.unsplash.com/photo-1553440569-bcc63803a83d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80');"></div>
+                <div class="slide-overlay"></div>
+                <div class="slide-content">
+                    <h1 itemprop="headline">Электромобили с гарантией 5 лет</h1>
+                    <p itemprop="description">Полный пакет услуг под ключ • Быстрая доставка</p>
+                    <div class="hero-buttons">
+                        <a href="#catalog-section" class="btn">Выбрать электромобиль</a>
+                        <a href="#calculator-section" class="btn btn-secondary">Рассчитать кредит</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="slider-dots">
+            <div class="dot active"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </div>
+    </section>
+
+    <!-- Benefits Section -->
+    <section class="benefits" itemscope itemtype="https://schema.org/ItemList">
+        <div class="container">
+            <h2 class="section-title" itemprop="name">Наши преимущества</h2>
+            <div class="benefits-grid">
+                <div class="benefit-card" itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                    <div class="benefit-icon">
+                        <i class="fas fa-percentage"></i>
+                    </div>
+                    <h3 itemprop="name">Первый взнос от 0%</h3>
+                    <p itemprop="description">Получите автомобиль без необходимости делать первый взнос</p>
+                </div>
+                <div class="benefit-card" itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                    <div class="benefit-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3 itemprop="name">Ставки от 5,9% годовых</h3>
+                    <p itemprop="description">Самые выгодные процентные ставки на рынке</p>
+                </div>
+                <div class="benefit-card" itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                    <div class="benefit-icon">
+                        <i class="fas fa-file-invoice"></i>
+                    </div>
+                    <h3 itemprop="name">Без справок о доходе</h3>
+                    <p itemprop="description">Одобрение кредита без сбора документов о доходах</p>
+                </div>
+                <div class="benefit-card" itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                    <div class="benefit-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3 itemprop="name">Страховка в подарок</h3>
+                    <p itemprop="description">Полис КАСКО в подарок при оформлении кредита</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Catalog Section -->
+    <section id="catalog-section" class="catalog" itemscope itemtype="https://schema.org/ItemList">
+        <div class="container">
+            <h2 class="section-title" itemprop="name">Популярные модели в кредит</h2>
+            <div class="catalog-filters">
+                <button class="filter-btn active" data-filter="all">ВСЕ АВТО</button>
+                <button class="filter-btn" data-filter="electric">ЭЛЕКТРОКАР</button>
+                <button class="filter-btn" data-filter="hybrid">ГИБРИД</button>
+                <button class="filter-btn" data-filter="crossover">КРОССОВЕР</button>
+                <button class="filter-btn" data-filter="sedan">СЕДАН</button>
+            </div>
+            <div class="catalog-grid">
+                <div class="car-card" data-type="electric" itemprop="itemListElement" itemscope itemtype="https://schema.org/Car">
+                    <a href="details.html" style="text-decoration: none !important;">
+                    <div class="car-image" style="background-image: url('https://images.unsplash.com/photo-1617358146447-44d8e7a1e8e4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80');" itemprop="image"></div>
+                    <div class="car-info">
+                        <h3 itemprop="name">BYD ATTO 3</h3>
+                        <p itemprop="vehicleEngine">Электрокар</p>
+                        <div class="car-prices">
+                            <div class="price-full" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+                                <span itemprop="price">13 500 000</span>
+                                <span itemprop="priceCurrency">KZT</span>
+                            </div>
+                            <div class="price-credit">от 202 500 тнг/мес</div>
+                        </div>
+                    </div>
+                    </a>
+                </div>
+                <div class="car-card" data-type="crossover hybrid" itemprop="itemListElement" itemscope itemtype="https://schema.org/Car">
+                    <a href="details.html" style="text-decoration: none !important;">
+                    <div class="car-image" style="background-image: url('https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80');" itemprop="image"></div>
+                    <div class="car-info">
+                        <h3 itemprop="name">Chery Tiggo 8 Pro</h3>
+                        <p itemprop="vehicleEngine">Внедорожник</p>
+                        <div class="car-prices">
+                            <div class="price-full" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+                                <span itemprop="price">11 250 000</span>
+                                <span itemprop="priceCurrency">KZT</span>
+                            </div>
+                            <div class="price-credit">от 180 000 тнг/мес</div>
+                        </div>
+                    </div>
+                    </a>
+                </div>
+                <div class="car-card" data-type="sedan" itemprop="itemListElement" itemscope itemtype="https://schema.org/Car">
+                    <a href="details.html" style="text-decoration: none !important;">
+                    <div class="car-image" style="background-image: url('https://images.unsplash.com/photo-1553440569-bcc63803a83d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80');" itemprop="image"></div>
+                    <div class="car-info">
+                        <h3 itemprop="name">Hongqi H5</h3>
+                        <p itemprop="vehicleEngine">Бизнес-класс</p>
+                        <div class="car-prices">
+                            <div class="price-full" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+                                <span itemprop="price">14 400 000</span>
+                                <span itemprop="priceCurrency">KZT</span>
+                            </div>
+                            <div class="price-credit">от 234 000 тнг/мес</div>
+                        </div>
+                    </div>
+                    </a>
+                </div>
+                <div class="car-card" data-type="pickup" itemprop="itemListElement" itemscope itemtype="https://schema.org/Car">
+                    <a href="details.html" style="text-decoration: none !important;">
+                    <div class="car-image" style="background-image: url('https://images.unsplash.com/photo-1583121274602-3e2820c69888?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80');" itemprop="image"></div>
+                    <div class="car-info">
+                        <h3 itemprop="name">JAC T8</h3>
+                        <p itemprop="vehicleEngine">Пикап</p>
+                        <div class="car-prices">
+                            <div class="price-full" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+                                <span itemprop="price">10 350 000</span>
+                                <span itemprop="priceCurrency">KZT</span>
+                            </div>
+                            <div class="price-credit">от 171 000 тнг/мес</div>
+                        </div>
+                    </div>
+                    </a>
+                </div>
+                <div class="car-card" data-type="hybrid crossover" itemprop="itemListElement" itemscope itemtype="https://schema.org/Car">
+                    <a href="details.html" style="text-decoration: none !important;">
+                    <div class="car-image" style="background-image: url('https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80');" itemprop="image"></div>
+                    <div class="car-info">
+                        <h3 itemprop="name">Changan UNI-Z</h3>
+                        <p itemprop="vehicleEngine">Гибридный кроссовер</p>
+                        <div class="car-prices">
+                            <div class="price-full" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+                                <span itemprop="price">13 500 000</span>
+                                <span itemprop="priceCurrency">KZT</span>
+                            </div>
+                            <div class="price-credit">от 225 000 тнг/мес</div>
+                        </div>
+                    </div>
+                    </a>
+                </div>
+                <div class="car-card" data-type="electric" itemprop="itemListElement" itemscope itemtype="https://schema.org/Car">
+                    <a href="details.html" style="text-decoration: none !important;">
+                    <div class="car-image" style="background-image: url('https://images.unsplash.com/photo-1617814065893-00757125efab?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80');" itemprop="image"></div>
+                    <div class="car-info">
+                        <h3 itemprop="name">NIO ET5</h3>
+                        <p itemprop="vehicleEngine">Электроседан</p>
+                        <div class="car-prices">
+                            <div class="price-full" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+                                <span itemprop="price">20 250 000</span>
+                                <span itemprop="priceCurrency">KZT</span>
+                            </div>
+                            <div class="price-credit">от 315 000 тнг/мес</div>
+                        </div>
+                    </div>
+                    </a>
+                </div>
+                <div class="car-card" data-type="crossover" itemprop="itemListElement" itemscope itemtype="https://schema.org/Car">
+                    <a href="details.html" style="text-decoration: none !important;">
+                    <div class="car-image" style="background-image: url('https://images.unsplash.com/photo-1549399542-7e7f8c7a5e4a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80');" itemprop="image"></div>
+                    <div class="car-info">
+                        <h3 itemprop="name">Geely Xingyue</h3>
+                        <p itemprop="vehicleEngine">Кроссовер</p>
+                        <div class="car-prices">
+                            <div class="price-full" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+                                <span itemprop="price">12 600 000</span>
+                                <span itemprop="priceCurrency">KZT</span>
+                            </div>
+                            <div class="price-credit">от 216 000 тнг/мес</div>
+                        </div>
+                    </div>
+                    </a>
+                </div>
+                <div class="car-card" data-type="sedan hybrid" itemprop="itemListElement" itemscope itemtype="https://schema.org/Car">
+                    <a href="details.html" style="text-decoration: none !important;">
+                        <div class="car-image" style="background-image: url('https://images.unsplash.com/photo-1542362567-b07e54358753?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80');" itemprop="image"></div>
+                        <div class="car-info">
+                            <h3 itemprop="name">BYD Han</h3>
+                            <p itemprop="vehicleEngine">Гибридный седан</p>
+                            <div class="car-prices">
+                                <div class="price-full" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+                                    <span itemprop="price">18 900 000</span>
+                                    <span itemprop="priceCurrency">KZT</span>
+                                </div>
+                                <div class="price-credit">от 292 500 тнг/мес</div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Calculator Section -->
+    <section id="calculator-section" class="calculator" itemscope itemtype="https://schema.org/FinancialService">
+        <div class="container">
+            <h2 class="section-title" itemprop="name">Рассчитайте ваш платёж за 30 секунд</h2>
+            <div class="calculator-container">
+                <div class="calculator-form">
+                    <div class="form-group">
+                        <label for="carPrice">Стоимость авто (тнг)</label>
+                        <div class="slider-container">
+                            <input type="range" id="carPrice" class="slider" min="2250000" max="22500000" step="450000" value="11250000">
+                            <div class="slider-value" id="carPriceValue">11 250 000 тнг</div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="downPayment">Первоначальный взнос (10-90%)</label>
+                        <div class="slider-container">
+                            <input type="range" id="downPayment" class="slider" min="10" max="90" value="30">
+                            <div class="slider-value" id="downPaymentValue">30%</div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="loanTerm">Срок кредита (1-7 лет)</label>
+                        <div class="slider-container">
+                            <input type="range" id="loanTerm" class="slider" min="1" max="7" value="5">
+                            <div class="slider-value" id="loanTermValue">5 лет</div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="interestRate">Процентная ставка (5,9% по умолчанию)</label>
+                        <div class="slider-container">
+                            <input type="range" id="interestRate" class="slider" min="4" max="20" step="0.1" value="5.9">
+                            <div class="slider-value" id="interestRateValue">5.9%</div>
+                        </div>
+                    </div>
+                    <button class="btn" style="width: 100%;">Оформить заявку</button>
+                    <p style="margin-top: 15px; font-size: 0.9rem; color: #666; text-align: center;">
+                        Расчет приблизительный. Точные условия после проверки
+                    </p>
+                </div>
+                <div class="result-box">
+                    <h3>Ваш расчет</h3>
+                    <div class="result-item">
+                        <div>Ежемесячный платёж:</div>
+                        <div class="result-value" id="monthlyPayment">191 250 тнг</div>
+                    </div>
+                    <div class="result-item">
+                        <div>Переплата:</div>
+                        <div class="result-value" id="overpayment">675 000 тнг</div>
+                    </div>
+                    <div class="result-item">
+                        <div>Общая сумма:</div>
+                        <div class="result-value" id="totalAmount">11 925 000 тнг</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Steps Section -->
+    <section class="steps" itemscope itemtype="https://schema.org/HowTo">
+        <div class="container">
+            <h2 class="section-title" itemprop="name">Как получить кредит</h2>
+            <div class="steps-container">
+                <div class="step" itemprop="step" itemscope itemtype="https://schema.org/HowToStep">
+                    <div class="step-number">1</div>
+                    <h3 itemprop="name">Выбор авто</h3>
+                    <p itemprop="text">Подберите автомобиль из нашего каталога</p>
+                </div>
+                <div class="step" itemprop="step" itemscope itemtype="https://schema.org/HowToStep">
+                    <div class="step-number">2</div>
+                    <h3 itemprop="name">Онлайн-заявка</h3>
+                    <p itemprop="text">Заполните заявку на сайте</p>
+                </div>
+                <div class="step" itemprop="step" itemscope itemtype="https://schema.org/HowToStep">
+                    <div class="step-number">3</div>
+                    <h3 itemprop="name">Одобрение</h3>
+                    <p itemprop="text">Получите решение в течение 1 часа</p>
+                </div>
+                <div class="step" itemprop="step" itemscope itemtype="https://schema.org/HowToStep">
+                    <div class="step-number">4</div>
+                    <h3 itemprop="name">Подписание</h3>
+                    <p itemprop="text">Заключите договор дистанционно</p>
+                </div>
+                <div class="step" itemprop="step" itemscope itemtype="https://schema.org/HowToStep">
+                    <div class="step-number">5</div>
+                    <h3 itemprop="name">Получение авто</h3>
+                    <p itemprop="text">Заберите автомобиль в салоне</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Reviews Section -->
+    <section class="reviews" itemscope itemtype="https://schema.org/Review">
+        <div class="container">
+            <h2 class="section-title" itemprop="name">Отзывы клиентов</h2>
+            <div class="reviews-grid">
+                <div class="review-card">
+                    <div class="review-video">
+                        <i class="fas fa-play-circle fa-3x"></i>
+                    </div>
+                    <h3 itemprop="name">Видеоотзыв</h3>
+                    <p itemprop="reviewBody">"Взял Exeed TXL в кредит. Платёж 180 000 тнг — как за аренду квартиры!"</p>
+                </div>
+                <div class="review-card">
+                    <div class="review-video">
+                        <i class="fas fa-car fa-3x"></i>
+                    </div>
+                    <h3 itemprop="author">Андрей Петров</h3>
+                    <p itemprop="reviewBody">"Одобрили через 2 часа. Первый взнос 0%. Очень доволен сервисом!"</p>
+                    <div class="review-text">
+                        <strong>Автомобиль:</strong> Chery Tiggo 8 Pro
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq-section" class="faq" itemscope itemtype="https://schema.org/FAQPage">
+        <div class="container">
+            <h2 class="section-title" itemprop="name">Частые вопросы</h2>
+            <div class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <div class="faq-question">
+                    <span itemprop="name">Нужен ли КАСКО?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <div itemprop="text">
+                        <p>КАСКО не является обязательным при оформлении кредита, но мы настоятельно рекомендуем его оформить для защиты вашего автомобиля. При оформлении через нас КАСКО предоставляется в подарок.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <div class="faq-question">
+                    <span itemprop="name">Можно ли погасить досрочно?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <div itemprop="text">
+                        <p>Да, вы можете погасить кредит досрочно в любое время без штрафных санкций. Мы не взимаем комиссию за досрочное погашение.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <div class="faq-question">
+                    <span itemprop="name">Какие документы нужны?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <div itemprop="text">
+                        <p>Для оформления кредита вам потребуется паспорт гражданина РК. При определенных условиях могут потребоваться дополнительные документы, но большинство клиентов одобряются с минимальным пакетом документов.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section id="promo-section" class="cta" itemscope itemtype="https://schema.org/Offer">
+        <div class="container">
+            <h2 itemprop="name">Специальное предложение!</h2>
+            <div class="timer" id="countdown">До окончания акции: 3 дня 00:00:00</div>
+            <p itemprop="description">Ставка 4,9% при заявке до 15 декабря 2023 года</p>
+            <p>Комплект зимней резины в подарок</p>
+            <form class="cta-form" itemprop="itemOffered" itemscope itemtype="https://schema.org/Service">
+                <input type="text" class="form-input" placeholder="Ваше имя" required>
+                <input type="tel" class="form-input" placeholder="Ваш телефон" required>
+                <select class="form-input">
+                    <option value="">Выберите желаемую модель</option>
+                    <option value="byd">BYD ATTO 3</option>
+                    <option value="chery">Chery Tiggo 8 Pro</option>
+                    <option value="hongqi">Hongqi H5</option>
+                    <option value="jac">JAC T8</option>
+                    <option value="changan">Changan UNI-Z</option>
+                </select>
+                <div class="form-checkbox">
+                    <input type="checkbox" id="consent" required>
+                    <label for="consent">Согласен на кредитную проверку</label>
+                </div>
+                <button type="submit" class="btn">Получить одобрение</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="contacts-section" itemscope itemtype="https://schema.org/WPFooter">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-column">
+                    <h3>ChinaAutoPro</h3>
+                    <p>Покупка автомобилей из Китая с выгодными условиями кредита. Надежно и быстро.</p>
+                </div>
+                <div class="footer-column">
+                    <h3>Каталог</h3>
+                    <ul>
+                        <li><a href="#">Электромобили</a></li>
+                        <li><a href="#">Кроссоверы</a></li>
+                        <li><a href="#">Седаны</a></li>
+                        <li><a href="#">Внедорожники</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h3>Услуги</h3>
+                    <ul>
+                        <li><a href="#">Автокредит</a></li>
+                        <li><a href="#">Страхование</a></li>
+                        <li><a href="#">Доставка</a></li>
+                        <li><a href="#">Таможенное оформление</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column" itemscope itemtype="https://schema.org/Organization">
+                    <h3 itemprop="name">Контакты</h3>
+                    <ul>
+                        <li itemprop="telephone"><i class="fas fa-phone"></i> +7 (777) 123-45-67</li>
+                        <li itemprop="email"><i class="fas fa-envelope"></i> info@chinaautopro.kz</li>
+                        <li itemprop="address" itemscope itemtype="https://schema.org/PostalAddress">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span itemprop="streetAddress">ул. Примерная, 15</span>,
+                            <span itemprop="addressLocality">Алматы</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="copyright">
+                &copy; 2023 ChinaAutoPro. Все права защищены.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Hero Slider
+        let currentSlide = 0;
+        const slides = document.querySelector('.slides');
+        const dots = document.querySelectorAll('.dot');
+        const totalSlides = document.querySelectorAll('.slide').length;
+        
+        function showSlide(index) {
+            slides.style.transform = `translateX(-${index * 100}%)`;
+            
+            // Update dots
+            dots.forEach((dot, i) => {
+                dot.classList.toggle('active', i === index);
+            });
+        }
+        
+        function nextSlide() {
+            currentSlide = (currentSlide + 1) % totalSlides;
+            showSlide(currentSlide);
+        }
+        
+        // Auto slide every 5 seconds
+        setInterval(nextSlide, 5000);
+        
+        // Dot click functionality
+        dots.forEach((dot, index) => {
+            dot.addEventListener('click', () => {
+                currentSlide = index;
+                showSlide(currentSlide);
+            });
+        });
+        
+        // Filter functionality
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        const carCards = document.querySelectorAll('.car-card');
+        
+        filterButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Remove active class from all buttons
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                // Add active class to clicked button
+                button.classList.add('active');
+                
+                const filter = button.getAttribute('data-filter');
+                
+                carCards.forEach(card => {
+                    if (filter === 'all') {
+                        card.style.display = 'block';
+                    } else {
+                        const cardType = card.getAttribute('data-type');
+                        if (cardType.includes(filter)) {
+                            card.style.display = 'block';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    }
+                });
+            });
+        });
+
+        // Calculator functionality
+        const carPriceSlider = document.getElementById('carPrice');
+        const downPaymentSlider = document.getElementById('downPayment');
+        const loanTermSlider = document.getElementById('loanTerm');
+        const interestRateSlider = document.getElementById('interestRate');
+        
+        const carPriceValue = document.getElementById('carPriceValue');
+        const downPaymentValue = document.getElementById('downPaymentValue');
+        const loanTermValue = document.getElementById('loanTermValue');
+        const interestRateValue = document.getElementById('interestRateValue');
+        
+        const monthlyPayment = document.getElementById('monthlyPayment');
+        const overpayment = document.getElementById('overpayment');
+        const totalAmount = document.getElementById('totalAmount');
+        
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+        }
+        
+        function calculatePayment() {
+            const carPrice = parseInt(carPriceSlider.value);
+            const downPaymentPercent = parseInt(downPaymentSlider.value);
+            const loanTerm = parseInt(loanTermSlider.value);
+            const interestRate = parseFloat(interestRateSlider.value);
+            
+            const downPayment = carPrice * (downPaymentPercent / 100);
+            const loanAmount = carPrice - downPayment;
+            const monthlyRate = interestRate / 100 / 12;
+            const numberOfPayments = loanTerm * 12;
+            
+            const monthly = (loanAmount * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -numberOfPayments));
+            const total = monthly * numberOfPayments;
+            const overpay = total - loanAmount;
+            
+            monthlyPayment.textContent = formatNumber(Math.round(monthly)) + ' тнг';
+            overpayment.textContent = formatNumber(Math.round(overpay)) + ' тнг';
+            totalAmount.textContent = formatNumber(Math.round(total)) + ' тнг';
+        }
+        
+        carPriceSlider.addEventListener('input', function() {
+            carPriceValue.textContent = formatNumber(this.value) + ' тнг';
+            calculatePayment();
+        });
+        
+        downPaymentSlider.addEventListener('input', function() {
+            downPaymentValue.textContent = this.value + '%';
+            calculatePayment();
+        });
+        
+        loanTermSlider.addEventListener('input', function() {
+            loanTermValue.textContent = this.value + ' лет';
+            calculatePayment();
+        });
+        
+        interestRateSlider.addEventListener('input', function() {
+            interestRateValue.textContent = this.value + '%';
+            calculatePayment();
+        });
+        
+        // Initialize calculator
+        calculatePayment();
+        
+        // FAQ accordion
+        const faqQuestions = document.querySelectorAll('.faq-question');
+        faqQuestions.forEach(question => {
+            question.addEventListener('click', () => {
+                const faqItem = question.parentElement;
+                faqItem.classList.toggle('active');
+            });
+        });
+        
+        // Countdown timer
+        function updateCountdown() {
+            const countdownElement = document.getElementById('countdown');
+            
+            // Установим дату окончания акции (например, через 3 дня от текущей даты)
+            const endDate = new Date();
+            endDate.setDate(endDate.getDate() + 3);
+            endDate.setHours(23, 59, 59, 999); // Установим время на конец дня
+            
+            const now = new Date();
+            const diff = endDate - now;
+            
+            // Проверим, не закончилась ли акция
+            if (diff <= 0) {
+                countdownElement.textContent = "Акция завершена!";
+                return;
+            }
+            
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            // Добавим ведущие нули для часов, минут и секунд
+            const formattedHours = hours.toString().padStart(2, '0');
+            const formattedMinutes = minutes.toString().padStart(2, '0');
+            const formattedSeconds = seconds.toString().padStart(2, '0');
+            
+            countdownElement.textContent = `До окончания акции: ${days} дней ${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
+        }
+        
+        // Инициализируем таймер и обновляем каждую секунду
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+        
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href').substring(1);
+                const target = document.getElementById(targetId);
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

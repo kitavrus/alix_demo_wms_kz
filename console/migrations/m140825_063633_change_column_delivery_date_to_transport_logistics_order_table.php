@@ -1,0 +1,19 @@
+<?php
+
+use yii\db\Schema;
+use yii\db\Migration;
+
+class m140825_063633_change_column_delivery_date_to_transport_logistics_order_table extends Migration
+{
+    public function up()
+    {
+        $this->execute("ALTER TABLE `transport_logistics_order` CHANGE `delivery_date` `delivery_date` DATE NOT NULL COMMENT 'Date of planned delivery'");
+    }
+
+    public function down()
+    {
+        echo "m140825_062544_change_column_mc_to_transport_logistics_order_table cannot be reverted.\n";
+
+        return false;
+    }
+}

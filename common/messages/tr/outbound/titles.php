@@ -1,0 +1,22 @@
+﻿<?php
+return [
+//    'Client'=>'Müşteri',
+//    'Load inbound invoice number From DeFacto API'=>'DeFacto giriş irsaliyesini indir',
+//    'Inbound Orders'=>'Giriş irsaliyesi',
+//    'Products'=>'Ürün',
+//    'In order'=>'Sipariş içinde',
+//    'In box'=>'Koli içinde',
+//    'The list of differences'=>'Fark listesi',
+    'Upload outbound invoice number From DeFacto API' => 'DeFacto giriş irsaliyesini yükle',
+    'Download outbound invoice number From DeFacto API' => 'DeFacto giriş irsaliyesini indir',
+    'Reports: orders' => 'Rapor: Siparişler',
+    'Order №' => 'Sipariş №',
+    'Order items' => 'Sipariş içindeki ürün',
+    'Not set' => 'Belirtilmemiş',
+    'Print pick list' => 'Toplama listesini yazdır',
+    'Assembly begin' => 'Toplama başladı',
+    'Assembly end' => 'Toplama bitti',
+    'Box label printed' => 'Koli etiketi yazdırıldı',
+    'Search list' => 'Arama listesi',
+    'Report: outbound orders' => 'Rapor: Çıkış siparişleri',
+];

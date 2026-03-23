@@ -1,0 +1,108 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: kitavrus
+ * Date: 15.01.15
+ * Time: 12:07
+ */
+////Yii::$app->get('tcpdf');;;
+///======================================================================
+//$pdf->SetCreator(PDF_CREATOR);
+//$pdf = new TCPDF('L', PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+$pdf = new TCPDF('P', PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+$pdf->SetAuthor('nmdx.com');
+$pdf->SetTitle('nmdx.com');
+$pdf->SetSubject('nmdx.com');
+$pdf->SetKeywords('nmdx.com');
+
+// remove default header/footer
+$pdf->setPrintHeader(false);
+$pdf->setPrintFooter(false);
+
+// set default monospaced font
+$pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
+
+//set margins
+$pdf->SetMargins(10, 10, 10, true);
+
+//set auto page breaks
+$pdf->SetAutoPageBreak(true, 5);
+
+//set image scale factor
+$pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
+
+
+// ---------------------------------------------------------
+
+$pdf->SetDisplayMode('fullpage', 'SinglePage', 'UseNone');
+
+// consider changing to A5
+$pdf->AddPage('P', 'A4', true);
+//$pdf->SetFont('arial', 'B', 22);
+//$pdf->Cell(10, 0, 'Список расхождений по накладной № ' . $order->order_number, 0, 0, 'L');
+
+//$pdf->Ln(10);
+$pdf->SetFont('arial', 'B', 15);
+$pdf->Cell(0, 0, date("Y-m-d"), 0, 0, 'R');
+$pdf->Ln(10);
+$pdf->SetFont('arial', 'b', 10);
+
+//            $pdf->SetLineWidth(0.2);
+
+$structure_table = '<table width="100%" cellspacing="0" cellpadding="4" border="1">' .
+    '   <tr align="center" valign="middle" >' .
+    '      <th width="15%" align="center" valign="middle" border="1"><strong>' . Yii::t('inbound/forms','Шк товара') . '</strong></th>' .
+    '      <th width="15%" align="center" valign="middle" border="1"><strong>' . Yii::t('inbound/forms','Шк лота') . '</strong></th>' .
+    '      <th width="15%" align="center" valign="middle" border="1"><strong>' . Yii::t('inbound/forms','Шк LC') . '</strong></th>' .
+    '      <th width="15%" align="center" valign="middle" border="1"><strong>' . Yii::t('inbound/forms','Primary address') . '</strong></th>' .
+    '      <th width="15%" align="center" valign="middle" border="1"><strong>' . Yii::t('inbound/forms','Secondary address') . '</strong></th>' .
+    '      <th width="10%" align="center" valign="middle" border="1"><strong>' . Yii::t('inbound/forms','Expected Qty') . '</strong></th>' .
+    '      <th width="10%" align="center" valign="middle" border="1"><strong>' . Yii::t('inbound/forms','Accepted Qty') . '</strong></th>' .
+    '   </tr>';
+
+if (!empty($items)) {
+    foreach ($items as $item) {
+        if($item['product_expected_qty'] != $item['product_accepted_qty']) {
+            $structure_table .= '<tr align="center" valign="middle" style="background-color:' . ($item['product_expected_qty'] == $item['product_accepted_qty'] ? '#FFFFF1' : 'lightgray') . '">
+                <td align="left" valign="middle" border="1">' . $item['product_barcode'] . '</td>
+                <td align="left" valign="middle" border="1">' . $item['lot_barcode'] . '</td>
+                <td align="left" valign="middle" border="1">' . $item['client_box_barcode'] . '</td>
+                <td align="center" valign="middle" border="1">-</td>
+                <td align="center" valign="middle" border="1">-</td>
+                <td align="center" valign="middle" border="1">' . $item['product_expected_qty'] . '</td>
+                <td align="center" valign="middle" border="1">' . $item['product_accepted_qty'] . '</td>
+            </tr>';
+
+//            id, product_barcode, box_address_barcode, place_address_barcode, lot_barcode, client_box_barcode count(*) as items
+            if($item['product_accepted_qty']>0) {
+                $stockService = new common\ecommerce\defacto\stock\service\Service;
+                $itemsProcess = $stockService->getItemsForDiffReportByOrderId( $item['inbound_id'],$item['product_barcode'],$item['lot_barcode'],$item['client_box_barcode']);
+
+//                \yii\helpers\VarDumper::dump($itemsProcess,10,true);
+//                die;
+
+                if ($itemsProcess) {
+                    foreach ($itemsProcess as $value) {
+                        $structure_table .= '<tr align="center" valign="middle">
+                            <td align="left" valign="middle" border="1">' . $value['product_barcode'] . '</td>
+                            <td align="center" valign="middle" border="1">' . $value['lot_barcode'] . '</td>
+                            <td align="center" valign="middle" border="1">' . $value['client_box_barcode'] . '</td>
+                            <td align="center" valign="middle" border="1">' . $value['box_address_barcode'] . '</td>
+                            <td align="center" valign="middle" border="1">' . $value['place_address_barcode'] . '</td>
+                            <td align="center" valign="middle" border="1">' . '-' . '</td>
+                            <td align="center" valign="middle" border="1">' . $value['items'] . '</td>
+                        </tr>';
+                    }
+                }
+            }
+
+        }
+    }
+}
+
+$structure_table .= '</table>';
+
+$pdf->writeHTML($structure_table);
+
+$pdf->Output(date("d-m-Y-H-i-s") . '-diff-in-order.pdf', 'D');
+Yii::$app->end();

@@ -1,0 +1,90 @@
+{
+    "name": "yiisoft/yii2-app-advanced",
+    "description": "Yii 2 Advanced Application Template",
+    "keywords": ["yii2", "framework", "advanced", "application template"],
+    "homepage": "http://www.yiiframework.com/",
+    "type": "project",
+    "license": "BSD-3-Clause",
+    "support": {
+        "issues": "https://github.com/yiisoft/yii2/issues?state=open",
+        "forum": "http://www.yiiframework.com/forum/",
+        "wiki": "http://www.yiiframework.com/wiki/",
+        "irc": "irc://irc.freenode.net/yii",
+        "source": "https://github.com/yiisoft/yii2"
+    },
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=5.4.0",
+        "yiisoft/yii2": "@stable",
+        "yiisoft/yii2-bootstrap": "@stable",
+        "yiisoft/yii2-swiftmailer": "*",
+        "yiisoft/yii2-faker": "~2.0.0",
+        "dektrium/yii2-user": "0.9.0",
+        "cinghie/yii2-tcpdf": "dev-master",
+	    "touki/ftp": "1.1.*",
+	    "phpoffice/phpexcel": "@stable",
+        "nuovo/spreadsheet-reader": "dev-master",
+        "2amigos/yii2-date-picker-widget" : "@stable",
+        "bower-asset/jquery": "@stable",
+        "bower-asset/jquery.inputmask": "@stable",
+        "bower-asset/punycode": "@stable",
+        "bower-asset/yii2-pjax": "2.0.1",
+        "league/csv": "@stable",
+        "kartik-v/yii2-datecontrol": "dev-master",
+        "kartik-v/yii2-grid": "dev-master",
+        "kartik-v/yii2-editable": "dev-master",
+        "kartik-v/yii2-detail-view": "dev-master",
+        "kartik-v/yii2-mpdf": "dev-master",
+        "kartik-v/yii2-widgets": "dev-master",
+        "kartik-v/yii2-money": "dev-master",
+        "kartik-v/yii2-date-range": "dev-master",
+        "codeception/codeception": "@stable",
+        "codeception/specify": "@stable",
+        "codeception/verify": "@stable",
+        "yii2mod/yii2-c3-chart": "*",
+        "tecnickcom/tc-lib-pdf": "dev-master",
+        "subdee/yii2-soap-server": "*",
+        "mongosoft/yii2-soap-server": "*",
+        "fergusean/nusoap": "*"
+    },
+    "require-dev": {
+        "codeception/codeception": "@stable",
+        "yiisoft/yii2-debug": "@stable",
+        "yiisoft/yii2-gii": "@stable"
+    },
+    "suggest": {
+        "codeception/codeception": "Codeception, 2.0.* is currently works well with Yii.",
+        "codeception/specify": "BDD style code blocks for PHPUnit and Codeception",
+        "codeception/verify": "BDD Assertions for PHPUnit and Codeception",
+        "yiisoft/yii2-faker": "Fixtures generator for Yii2 based on Faker lib"
+    },
+    "scripts": {
+        "post-create-project-cmd": [
+            "yii\\composer\\Installer::setPermission",
+            "yii\\composer\\Installer::generateCookieValidationKey"
+        ]
+    },
+    "config": {
+        "process-timeout": 1800
+    },
+    "extra": {
+        "writable": [
+            "backend/runtime",
+            "backend/web/assets",
+
+            "frontend/runtime",
+            "frontend/web/assets"
+        ],
+        "config": [
+            "frontend/config/main.php",
+            "backend/config/main.php"
+        ],
+        "asset-installer-paths": {
+            "npm-asset-library": "vendor/npm",
+            "bower-asset-library": "vendor/bower",
+            "npm-searchable": false,
+            "bower-searchable": false
+
+        }
+    }
+}

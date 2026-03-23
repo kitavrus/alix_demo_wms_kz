@@ -1,0 +1,278 @@
+html,
+body {
+    height: 100%;
+}
+
+.wrap {
+    min-height: 100%;
+    height: auto;
+    margin: 0 auto -60px;
+    padding: 0 0 60px;
+}
+
+.wrap > .container {
+    padding: 70px 15px 20px;
+}
+
+.footer {
+    height: 60px;
+    background-color: #f5f5f5;
+    border-top: 1px solid #ddd;
+    padding-top: 20px;
+}
+
+.jumbotron {
+    text-align: center;
+    background-color: transparent;
+}
+
+.jumbotron .btn {
+    font-size: 21px;
+    padding: 14px 24px;
+}
+
+.not-set {
+    color: #c55;
+    font-style: italic;
+}
+
+/* add sorting icons to gridview sort links */
+a.asc:after, a.desc:after {
+    position: relative;
+    top: 1px;
+    display: inline-block;
+    font-family: 'Glyphicons Halflings';
+    font-style: normal;
+    font-weight: normal;
+    line-height: 1;
+    padding-left: 5px;
+}
+
+a.asc:after {
+    content: /*"\e113"*/ "\e151";
+}
+
+a.desc:after {
+    content: /*"\e114"*/ "\e152";
+}
+
+.sort-numerical a.asc:after {
+    content: "\e153";
+}
+
+.sort-numerical a.desc:after {
+    content: "\e154";
+}
+
+.sort-ordinal a.asc:after {
+    content: "\e155";
+}
+
+.sort-ordinal a.desc:after {
+    content: "\e156";
+}
+
+.grid-view th {
+    white-space: nowrap;
+}
+
+.hint-block {
+    display: block;
+    margin-top: 5px;
+    color: #999;
+}
+
+.error-summary {
+    color: #a94442;
+    background: #fdf7f7;
+    border-left: 3px solid #eed3d7;
+    padding: 10px 20px;
+    margin: 0 0 15px 0;
+}
+
+#logo-logo{
+    margin-left: 50px;
+}
+
+.table-striped > tbody > tr:nth-child(2n+1) > td, .table-striped > tbody > tr:nth-child(2n+1) > th {
+    background-color: #e6e6e6;
+}
+
+/*.navbar-inverse {*/
+    /*background-color: #00b5cb;*/
+    /*border-color: #8cc63f;*/
+/*}*/
+
+/*.navbar-inverse .navbar-brand {*/
+    /*color: #777;*/
+/*}*/
+
+/*.navbar-inverse .navbar-nav > li > a {*/
+    /*color: #52626f;*/
+/*}*/
+
+/*.navbar-inverse .navbar-nav > .open > a, .navbar-inverse .navbar-nav > .open > a:hover, .navbar-inverse .navbar-nav > .open > a:focus {*/
+    /*background-color: #8cc640;*/
+    /*color: #fff;*/
+/*}*/
+
+/*.navbar-brand a:focus{*/
+    /*color: #8cc640;*/
+/*}*/
+
+/*.navbar-inverse .navbar-brand:hover,*/
+/*.navbar-inverse .navbar-brand:focus {*/
+    /*color: #8cc800;*/
+    /*background-color: transparent;*/
+/*}*/
+
+/*.navbar-inverse .navbar-nav > li > a {*/
+    /*color: #777;*/
+/*}*/
+
+
+/*
+Status
+*/
+.dp-row-options-status-add-route-to-dp {
+    background-color: #DDA0DD !important;
+}
+.dp-row-options-status-add-route-to-dp td {
+    background-color: #DDA0DD !important;
+}
+/*
+ grid Status colors
+*/
+.color-new td {
+    background-color: #FFFFA3 !important;
+}
+
+.color-on-route td {
+    background-color: #E0F5FF !important;
+}
+.color-delivered td {
+    background-color: #D1FFD1 !important;
+}
+.color-done td {
+    background-color: #D1FFD1 !important;
+}
+.color-add-car td {
+    background-color: #33CCFF !important;
+}
+.color-add-route td {
+    background-color: #FFAD99 !important;
+}
+.color-not-added-m3 td {
+    background-color: #FFD6CC !important;
+}
+.color-in-process td {
+    background-color: #80E6B2 !important;
+}
+
+/*
+ grid order colors
+*/
+.color-tan td {
+    background-color: #FFA54F !important;
+}
+
+.color-orange td {
+    background-color: #FFA500 !important;
+}
+
+.color-khaki td {
+    background-color: #FFF68F !important;
+}
+
+.color-dark-olive-green td {
+    background-color: #CAFF70 !important;
+}
+
+.color-light-sky-blue td {
+    background-color: #87CEFA !important;
+}
+
+.color-dodger-blue td {
+    background-color: #1E90FF !important;
+}
+
+.color-light-yellow td {
+    background-color: #FFFFE0 !important;
+}
+
+.color-pale-green td {
+    background-color: #98FB98 !important;
+}
+
+.color-indian-red td {
+    background-color: #FF6A6A !important;
+}
+
+.color-slate-gray td {
+    background-color: #C6E2FF !important;
+}
+.color-violet td {
+    background-color: #EE82EE !important;
+}
+
+
+.btn-grid-action-column {
+    width:90px !important;
+    margin-top:5px !important;
+}
+/* HOOK */
+/* kv-grid.css */
+.kv-grid-container {
+    overflow-x: inherit !important;
+}
+
+.ext-large-input {
+    border-radius: 6px;
+    font-size: 48px;
+    height: 76px;
+    line-height: 1.33333;
+    padding: 10px 16px;
+}
+
+.progress-operation-report {
+    height: 35px!important;
+    margin-bottom: 0px!important;
+}
+.progress-bar-operation-report {
+    font-size: 18px!important;
+    line-height: 33px!important;
+}
+
+.frame-bl-test {
+    width: 100mm;
+    height: 70mm;
+}
+.frame-a4-test {
+    width: 210mm;
+    height: 297mm;
+}
+
+.table-a4-test {
+    width: 210mm;
+    height: 297mm;
+}
+
+.table-bl-test {
+    width: 100mm;
+    height: 70mm;
+}
+
+#countdown {
+   text-align: center;
+}
+
+.qty-lot-in-client-box-wrapper {
+    font-size: 33px !important;
+    line-height: 33px !important;
+}
+
+.qty-lot-in-client-box {
+     font-size: 33px !important;
+     line-height: 33px !important;
+     padding: 2px 4px !important;
+ }
