@@ -64,9 +64,22 @@ use Yii;
  * @property int $transfer_item_id Transfer item id
  * @property int $status_transfer Status transfer
  * @property int $transfer_outbound_box transfer outbound box
+ * @property string $kaspi_stock_status
+ * @property string $kaspi_order_status
  */
 class EcommerceStock extends \common\models\ActiveRecord
 {
+    const STATUS_AVAILABILITY_NOT_SET = 0; // Not set
+    const STATUS_AVAILABILITY_NO = 1; // НЕ ДОСТУПНО для резервирования
+    const STATUS_AVAILABILITY_YES = 2; // ДОСТУПНО для резервирования
+    const STATUS_AVAILABILITY_RESERVED = 3; // ЗАРЕЗЕРВИРОВАН
+    const STATUS_AVAILABILITY_BLOCKED = 4; // ЗАБЛОКИРОВАН недоступен для резервирования. Примеры, товар поврежден или потерян
+    const STATUS_AVAILABILITY_TEMPORARILY_RESERVED = 5; // Частично зарезервирована. Это нужно для Солинс
+
+    const KASPI_STOCK_STATUS_NOT_SET = '';
+    const KASPI_STOCK_STATUS_NEW = 'NEW';
+    const KASPI_STOCK_STATUS_SYNCED = 'SYNCED';
+
     /**
      * @inheritdoc
      */
@@ -94,6 +107,7 @@ class EcommerceStock extends \common\models\ActiveRecord
             [['transfer_box_check_step'], 'string'],
             [['transfer_outbound_box'], 'string'],
 			[['product_qrcode'], 'string'],
+            [['kaspi_stock_status', 'kaspi_order_status'], 'string', 'max' => 32],
 
         ];
     }
@@ -151,6 +165,8 @@ class EcommerceStock extends \common\models\ActiveRecord
             'created_at' => 'Created At',
             'updated_at' => 'Updated At',
             'deleted' => 'Deleted',
+            'kaspi_stock_status' => 'Kaspi Stock Status',
+            'kaspi_order_status' => 'Kaspi Order Status',
         ];
     }
 }

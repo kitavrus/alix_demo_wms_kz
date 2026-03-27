@@ -73,7 +73,7 @@ $kaspi = Yii::$app->getModule('kaspi')->get('kaspiService');
 | Сервис | Роль |
 |--------|------|
 | **KaspiAPIService** | Прямые вызовы Kaspi: import, classification, orders, смена статусов заказа и т.д. |
-| **StockService** | Данные таблицы `stock`: доступный остаток, отбор на импорт, `kaspi_stock_status`, экспорт xlsx |
+| **StockService** | Данные таблицы `ecommerce_stock`: доступный остаток, отбор на импорт, `kaspi_stock_status`, экспорт xlsx |
 | **KaspiService** | Обёртка для контроллера: заказы, классификация, сценарий `productsImportFromRequest()` |
 
 ---
@@ -104,10 +104,10 @@ $kaspi = Yii::$app->getModule('kaspi')->get('kaspiService');
 
 ## Остатки и синхронизация с Kaspi
 
-- Импорт берёт строки из `stock`, где товар доступен и `kaspi_stock_status` пустой / `NEW` (см. `StockService::getStockToImportToKaspi()`).
-- После успешного ответа Kaspi SKU помечаются как **`SYNCED`** (`Stock::KASPI_STOCK_STATUS_SYNCED`, поле `kaspi_stock_status`).
-- Для заказов предусмотрено поле **`kaspi_order_status`** в модели `stock` (заполнение — по вашему сценарию).
-- Константы статусов: `common/modules/stock/models/Stock.php`.
+- Импорт берёт строки из `ecommerce_stock`, где товар доступен и `kaspi_stock_status` пустой / `NEW` (см. `StockService::getStockToImportToKaspi()`).
+- После успешного ответа Kaspi SKU помечаются как **`SYNCED`** (`EcommerceStock::KASPI_STOCK_STATUS_SYNCED`, поле `kaspi_stock_status`).
+- Для заказов предусмотрено поле **`kaspi_order_status`** в модели `ecommerce_stock` (заполнение — по вашему сценарию).
+- Константы статусов: `common/ecommerce/entities/EcommerceStock.php`.
 
 ---
 

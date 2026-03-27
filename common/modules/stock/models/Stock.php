@@ -70,8 +70,6 @@ use common\modules\client\models\Client;
  * @property string $field_extra3
  * @property string $field_extra4
  * @property string $field_extra5
- * @property string  $kaspi_stock_status
- * @property string  $kaspi_order_status
  * @property string $our_product_barcode
  * @property string $bind_qr_code
  * @property integer $created_user_id
@@ -189,17 +187,6 @@ class Stock extends \common\models\ActiveRecord
     const IS_PRODUCT_TYPE_LOT_BOX = 1;
     const IS_PRODUCT_TYPE_RETURN = 2;
 
-    /*
-     * Kaspi stock sync status (для процесса “заливки остатков в Kaspi”).
-     *
-     * Поле `stock.kaspi_stock_status` хранит внутреннее состояние синка:
-     * - NEW      : не синхронизировано в Kaspi
-     * - SYNCED   : успешно синхронизировано
-     */
-    const KASPI_STOCK_STATUS_NOT_SET = '';
-    const KASPI_STOCK_STATUS_NEW = 'NEW';
-    const KASPI_STOCK_STATUS_SYNCED = 'SYNCED';
-
     /**
      * @inheritdoc
      */
@@ -218,7 +205,7 @@ class Stock extends \common\models\ActiveRecord
             [['product_name', 'product_model', 'product_sku'], 'string', 'max' => 128],
             [['product_barcode', 'box_barcode', 'our_product_barcode', 'bind_qr_code'], 'string', 'max' => 54],
             [['primary_address', 'secondary_address','inventory_primary_address'], 'string', 'max' => 25],
-            [['box_size_m3','box_size_barcode','outbound_picking_list_barcode','inbound_client_box','system_status','kaspi_stock_status','kaspi_order_status'], 'string', 'max' => 32],
+            [['box_size_m3','box_size_barcode','outbound_picking_list_barcode','inbound_client_box','system_status'], 'string', 'max' => 32],
             [['system_status_description'], 'string'],
             [['field_extra1','field_extra2','field_extra3','field_extra4','field_extra5'], 'string'],
             [['address_pallet_qty'], 'integer','min'=>1,'max'=>3],
@@ -255,8 +242,6 @@ class Stock extends \common\models\ActiveRecord
             'status' => Yii::t('stock/forms', 'Status'),
             'status_availability' => Yii::t('stock/forms', 'Status availability'),
             'status_lost' => Yii::t('stock/forms', 'Status lost'),
-            'kaspi_stock_status' => Yii::t('stock/forms', 'Kaspi Stock Status'),
-            'kaspi_order_status' => Yii::t('stock/forms', 'Kaspi Order Status'),
             'primary_address' => Yii::t('stock/forms', 'Primary address'),
             'secondary_address' => Yii::t('stock/forms', 'Secondary address'),
             'address_sort_order' => Yii::t('stock/forms', 'Sort order Secondary address'),

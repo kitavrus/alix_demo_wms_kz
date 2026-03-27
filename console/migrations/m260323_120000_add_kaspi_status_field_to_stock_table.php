@@ -7,22 +7,22 @@ class m260323_120000_add_kaspi_status_field_to_stock_table extends Migration
     public function up()
     {
         $this->addColumn(
-            '{{%stock}}',
+            '{{%ecommerce_stock}}',
             'kaspi_stock_status',
-            $this->string(32)->defaultValue('')->comment('Kaspi stock sync status')->after('system_status_description')
+            $this->string(32)->defaultValue('')->comment('Kaspi stock sync status')
         );
         $this->addColumn(
-            '{{%stock}}',
+            '{{%ecommerce_stock}}',
             'kaspi_order_status',
-            $this->string(32)->defaultValue('')->comment('Kaspi order status')->after('kaspi_stock_status')
+            $this->string(32)->defaultValue('')->comment('Kaspi order status')
         );
     }
 
     public function down()
     {
-        $this->dropColumn('{{%stock}}', 'kaspi_order_status');
-        $this->dropColumn('{{%stock}}', 'kaspi_stock_status');
-        return false;
+        $this->dropColumn('{{%ecommerce_stock}}', 'kaspi_order_status');
+        $this->dropColumn('{{%ecommerce_stock}}', 'kaspi_stock_status');
+        return true;
     }
 }
 

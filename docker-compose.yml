@@ -42,7 +42,7 @@ services:
     image: biarms/mysql:5.7
     restart: always
     environment:
-      - MYSQL_DATABASE=wms_kz
+      - MYSQL_DATABASE=alix_wms
       - MYSQL_USER=user
       - MYSQL_PASSWORD=password
       - MYSQL_ROOT_PASSWORD=password

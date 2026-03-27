@@ -3,7 +3,7 @@
 namespace stockDepartment\modules\kaspi\services;
 
 use Yii;
-use common\modules\stock\models\Stock;
+use common\ecommerce\entities\EcommerceStock;
 use yii\helpers\BaseFileHelper;
 
 /**
@@ -16,18 +16,18 @@ class StockService
      */
     public function getAvailableStock()
     {
-        return Stock::find()
+        return EcommerceStock::find()
             ->select([
                 'product_sku',
                 'product_name',
-                'product_brand',
-                'product_category'
+                'product_brand' => 'product_model',
+                'product_category' => 'product_season_full'
             ])
             ->andWhere([
-                'status_availability' => Stock::STATUS_AVAILABILITY_YES,
+                'status_availability' => EcommerceStock::STATUS_AVAILABILITY_YES,
                 'deleted' => 0,
             ])
-            ->groupBy("product_sku, product_name, product_brand, product_category")
+            ->groupBy("product_sku, product_name, product_model, product_season_full")
             ->asArray()
             ->all();
     }
@@ -46,15 +46,15 @@ class StockService
      */
     public function getStockToImportToKaspi()
     {
-        $rows = Stock::find()
+        $rows = EcommerceStock::find()
             ->select([
                 'product_sku',
                 'product_name',
-                'product_brand',
-                'product_category'
+                'product_brand' => 'product_model',
+                'product_category' => 'product_season_full'
             ])
             ->andWhere([
-                'status_availability' => Stock::STATUS_AVAILABILITY_YES,
+                'status_availability' => EcommerceStock::STATUS_AVAILABILITY_YES,
                 'deleted' => 0,
             ])
             ->andWhere([
@@ -62,9 +62,9 @@ class StockService
                 'or',
                 ['kaspi_stock_status' => null],
                 ['kaspi_stock_status' => ''],
-                ['kaspi_stock_status' => Stock::KASPI_STOCK_STATUS_NEW],
+                ['kaspi_stock_status' => EcommerceStock::KASPI_STOCK_STATUS_NEW],
             ])
-            ->groupBy("product_sku, product_name, product_brand, product_category")
+            ->groupBy("product_sku, product_name, product_model, product_season_full")
             ->asArray()
             ->all();
 
@@ -72,10 +72,10 @@ class StockService
         // [{ sku, title, brand, category, description, images, attributes }]
         return array_map(function (array $row) {
             return [
-                'sku' => (string) ($row['product_sku'] ?? ''),
-                'title' => (string) ($row['product_name'] ?? ''),
-                'brand' => (string) ($row['product_brand'] ?? ''),
-                'category' => (string) ($row['product_category'] ?? ''),
+                'sku' => isset($row['product_sku']) ? (string) $row['product_sku'] : '',
+                'title' => isset($row['product_name']) ? (string) $row['product_name'] : '',
+                'brand' => isset($row['product_brand']) ? (string) $row['product_brand'] : '',
+                'category' => isset($row['product_category']) ? (string) $row['product_category'] : '',
                 // В текущей реализации у нас нет источника для описания/изображений/атрибутов.
                 // Если нужно — добавим извлечение из таблиц/справочников.
                 'description' => null,
@@ -98,8 +98,8 @@ class StockService
             return 0;
         }
 
-        return Stock::updateAll(
-            ['kaspi_stock_status' => Stock::KASPI_STOCK_STATUS_SYNCED],
+        return EcommerceStock::updateAll(
+            ['kaspi_stock_status' => EcommerceStock::KASPI_STOCK_STATUS_SYNCED],
             [
                 'and',
                 ['deleted' => 0],
