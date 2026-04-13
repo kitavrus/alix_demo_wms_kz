@@ -89,22 +89,31 @@ class StockService
      * Пометить SKU как успешно синхронизированные в Kaspi.
      *
      * @param array<int, string> $productSkus
+     * @param int|null $beforeTimestamp Помечаем только записи, созданные до этого момента.
+     *                                  Защита от race condition: новые приёмки, пришедшие
+     *                                  после сборки прайс-листа, не будут ошибочно помечены.
      * @return int number of affected rows
      */
-    public function markKaspiStockAsSynced(array $productSkus)
+    public function markKaspiStockAsSynced(array $productSkus, $beforeTimestamp = null)
     {
         $productSkus = array_values(array_filter(array_map('strval', $productSkus)));
         if (empty($productSkus)) {
             return 0;
         }
 
+        $condition = [
+            'and',
+            ['deleted' => 0],
+            ['in', 'product_sku', $productSkus],
+        ];
+
+        if ($beforeTimestamp !== null) {
+            $condition[] = ['<=', 'created_at', (int) $beforeTimestamp];
+        }
+
         return EcommerceStock::updateAll(
             ['kaspi_stock_status' => EcommerceStock::KASPI_STOCK_STATUS_SYNCED],
-            [
-                'and',
-                ['deleted' => 0],
-                ['in', 'product_sku', $productSkus],
-            ]
+            $condition
         );
     }
 

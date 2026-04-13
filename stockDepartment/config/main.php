@@ -220,6 +220,51 @@ return [
 					"route"=>"alix/api/v1/inbound/returns",
 					'verb'=>'POST'
 				],
+				[
+					'pattern' => "kaspi/api/v1/price-update",
+					'route'   => "kaspi/api/v1/kaspi/price-update",
+					'verb'    => 'POST'
+				],
+				[
+					'pattern' => "kaspi/api/v1/price-list-download",
+					'route'   => "kaspi/api/v1/kaspi/price-list-download",
+					'verb'    => 'GET'
+				],
+				[
+					'pattern' => "kaspi/api/v1/price-list-generate",
+					'route'   => "kaspi/api/v1/kaspi/price-list-generate",
+					'verb'    => 'POST'
+				],
+				[
+					'pattern' => "kaspi/api/v1/stock-update",
+					'route'   => "kaspi/api/v1/kaspi/stock-update",
+					'verb'    => 'POST'
+				],
+				[
+					'pattern' => "kaspi/api/v1/orders/<orderId:[^\/]+>/transfer-to-courier",
+					'route'   => "kaspi/api/v1/kaspi/transfer-to-courier",
+					'verb'    => 'POST'
+				],
+				[
+					'pattern' => "kaspi/api/v1/orders/<orderId:[^\/]+>/label",
+					'route'   => "kaspi/api/v1/kaspi/order-label",
+					'verb'    => 'GET'
+				],
+				[
+					'pattern' => "kaspi/api/v1/orders/<orderId:[^\/]+>/cancel-return-to-stock",
+					'route'   => "kaspi/api/v1/kaspi/cancel-return-to-stock",
+					'verb'    => 'POST'
+				],
+				[
+					'pattern' => "kaspi/api/v1/orders/<orderId:[^\/]+>/partial-return",
+					'route'   => "kaspi/api/v1/kaspi/partial-return",
+					'verb'    => 'POST'
+				],
+				[
+					'pattern' => "kaspi/api/v1/orders/<orderId:[^\/]+>/confirm-return-completed",
+					'route'   => "kaspi/api/v1/kaspi/confirm-return-completed",
+					'verb'    => 'POST'
+				],
             ]
         ],
         'view' => [

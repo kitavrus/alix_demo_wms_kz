@@ -5,6 +5,10 @@ namespace stockDepartment\modules\kaspi;
 use stockDepartment\modules\kaspi\constants\KaspiConstants;
 use stockDepartment\modules\kaspi\services\KaspiAPIService;
 use stockDepartment\modules\kaspi\services\KaspiService;
+use stockDepartment\modules\kaspi\services\OrderReturnService;
+use stockDepartment\modules\kaspi\services\PriceListService;
+use stockDepartment\modules\kaspi\services\PriceService;
+use stockDepartment\modules\kaspi\services\StockHistoryService;
 use stockDepartment\modules\kaspi\services\StockService;
 use yii\base\Module;
 
@@ -48,6 +52,18 @@ class kaspi extends Module
         ]);
         $this->set('kaspiService', [
             'class' => KaspiService::class,
+        ]);
+        $this->set('priceListService', [
+            'class' => PriceListService::class,
+        ]);
+        $this->set('priceService', [
+            'class' => PriceService::class,
+        ]);
+        $this->set('stockHistoryService', [
+            'class' => StockHistoryService::class,
+        ]);
+        $this->set('orderReturnService', [
+            'class' => OrderReturnService::class,
         ]);
     }
 }
