@@ -56,20 +56,51 @@ class PriceService extends Component
             ? (int) Yii::$app->user->id
             : null;
 
-        // Собираем все GUID из батча и загружаем артикулы одним запросом
-        $allGuids = array_map(function ($dto) { return $dto->product_guid; }, $dtos);
-        $articleMap = ProductV2::find()
-            ->select(['article', 'guid'])
-            ->andWhere(['in', 'guid', $allGuids])
-            ->indexBy('guid')
-            ->column();
+        // Собираем все идентификаторы из батча — могут быть как GUID, так и артикулы
+        $allIds = array_map(function ($dto) { return $dto->product_guid; }, $dtos);
+
+        // Ищем по guid
+        $byGuid = ProductV2::find()
+            ->select(['guid', 'article'])
+            ->andWhere(['in', 'guid', $allIds])
+            ->asArray()
+            ->all();
+        $guidToArticle = [];
+        foreach ($byGuid as $row) {
+            $guidToArticle[$row['guid']] = $row['article'];
+        }
+
+        // Для тех, что не нашлись по guid — ищем по article
+        $notFoundByGuid = array_diff($allIds, array_keys($guidToArticle));
+        $articleToGuid = [];
+        if (!empty($notFoundByGuid)) {
+            $byArticle = ProductV2::find()
+                ->select(['guid', 'article'])
+                ->andWhere(['in', 'article', $notFoundByGuid])
+                ->asArray()
+                ->all();
+            foreach ($byArticle as $row) {
+                $articleToGuid[$row['article']] = $row['guid'];
+            }
+        }
 
         foreach ($dtos as $dto) {
             $effectiveFrom = $dto->getEffectiveFromTimestamp();
-            $article = isset($articleMap[$dto->product_guid]) ? $articleMap[$dto->product_guid] : null;
+
+            // Резолвим: если пришёл GUID — берём артикул; если пришёл артикул — берём GUID
+            if (isset($guidToArticle[$dto->product_guid])) {
+                $guid    = $dto->product_guid;
+                $article = $guidToArticle[$dto->product_guid];
+            } elseif (isset($articleToGuid[$dto->product_guid])) {
+                $guid    = $articleToGuid[$dto->product_guid];
+                $article = $dto->product_guid;
+            } else {
+                $guid    = $dto->product_guid;
+                $article = null;
+            }
 
             $record = new KaspiPriceHistory();
-            $record->product_guid    = $dto->product_guid;
+            $record->product_guid    = $guid;
             $record->article         = $article;
             $record->price           = (float) $dto->price;
             $record->price_type      = $dto->price_type;
