@@ -75,6 +75,7 @@ class KaspiController extends Controller
                 'products-classification-attributes' => ['GET'],
                 'price-update' => ['POST'],
                 'price-list-download' => ['GET'],
+                'price-list-download-xml' => ['GET'],
                 'price-list-generate' => ['POST'],
                 'stock-update' => ['POST'],
                 'transfer-to-courier' => ['POST'],
@@ -188,6 +189,22 @@ class KaspiController extends Controller
         }
 
         return Yii::$app->response->sendFile($filePath, 'kaspi-price-list.xlsx');
+    }
+
+    /**
+     * Скачать последний сгенерированный XML-прайс-лист.
+     *
+     * GET /kaspi/api/v1/price-list-download-xml
+     */
+    public function actionPriceListDownloadXml()
+    {
+        $filePath = $this->priceListService->getXmlFilePath();
+
+        if (!file_exists($filePath)) {
+            throw new NotFoundHttpException('XML price list file not found. Generate it first via POST /kaspi/api/v1/price-update');
+        }
+
+        return Yii::$app->response->sendFile($filePath, 'kaspi-price-list.xml');
     }
 
     /**

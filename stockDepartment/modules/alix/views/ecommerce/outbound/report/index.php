@@ -4,7 +4,7 @@ use yii\helpers\Html;
 use yii\grid\GridView;
 use common\helpers\iHelper;
 use yii\helpers\Url;
-use stockDepartment\modules\intermode\controllers\ecommerce\outbound\domain\constants\OutboundStatus;
+use stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\constants\OutboundStatus;
 
 /* @var $this yii\web\View */
 /* @var $searchModel common\ecommerce\entities\EcommerceOutboundSearch */
@@ -80,7 +80,7 @@ $this->params['breadcrumbs'][] = $this->title;
 //                        if(!empty($link)) {
 //                            $link .= ' / ';
 //                        }
-                        $link .= Html::tag('a', 'Лист сборки', ['href' => Url::to(['/intermode/ecommerce/outbound/picking/print-picking-list-no-reserve', 'id' => $data->id]), 'target' => '_blank']);
+                        $link .= Html::tag('a', 'Лист сборки', ['href' => Url::to(['/alix/ecommerce/outbound/picking/print-picking-list-no-reserve', 'id' => $data->id]), 'target' => '_blank']);
                     }
                     return $link;
                 },
@@ -105,8 +105,8 @@ $this->params['breadcrumbs'][] = $this->title;
 </div>
 <div>
 
-    <?= Html::tag('span',Yii::t('transportLogistics/buttons','Export to Excel'),['class' => 'btn btn-success','id'=>'report-order-export-btn', 'data-url'=>'/intermode/ecommerce/outbound/report/outbound-export-to-excel']) ?>
-    <?= Html::tag('span',Yii::t('transportLogistics/buttons','Export to Excel with Products'),['class' => 'btn btn-success','id'=>'report-order-export-full-btn', 'data-url'=>'/intermode/ecommerce/outbound/report/outbound-export-to-excel-with-products']) ?>
+    <?= Html::tag('span',Yii::t('transportLogistics/buttons','Export to Excel'),['class' => 'btn btn-success','id'=>'report-order-export-btn', 'data-url'=>'/alix/ecommerce/outbound/report/outbound-export-to-excel']) ?>
+    <?= Html::tag('span',Yii::t('transportLogistics/buttons','Export to Excel with Products'),['class' => 'btn btn-success','id'=>'report-order-export-full-btn', 'data-url'=>'/alix/ecommerce/outbound/report/outbound-export-to-excel-with-products']) ?>
 <!--	--><?//= Html::tag('span',Yii::t('transportLogistics/buttons','Export to Excel for Dastan'),['class' => 'btn btn-success','id'=>'report-order-export-dastan-btn', 'data-url'=>'/ecommerce/defacto/report/outbound-export-to-excel-dastan']) ?>
     <br />
 </div>

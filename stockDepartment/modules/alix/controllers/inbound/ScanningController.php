@@ -1,6 +1,6 @@
 <?php
 
-namespace stockDepartment\modules\intermode\controllers\inbound;
+namespace stockDepartment\modules\alix\controllers\inbound;
 
 
 use common\models\ActiveRecord;
@@ -12,8 +12,8 @@ use common\modules\client\models\Client;
 use common\modules\inbound\models\InboundOrder;
 
 use Yii;
-use stockDepartment\modules\intermode\controllers\inbound\domain\InboundForm;
-use stockDepartment\modules\intermode\controllers\inbound\domain\InboundScanningService;
+use stockDepartment\modules\alix\controllers\inbound\domain\InboundForm;
+use stockDepartment\modules\alix\controllers\inbound\domain\InboundScanningService;
 use stockDepartment\components\Controller;
 use yii\bootstrap\ActiveForm;
 use yii\web\Response;
@@ -203,7 +203,11 @@ class ScanningController extends Controller
 		if ($model->load($post) && $model->validate()) {
 
 			$stock = $model->setScannedStatus();
-			(new InboundScanningService())->sendStatusInWork($model->order_number);
+			try {
+				// (new InboundScanningService())->sendStatusInWork($model->order_number);
+			} catch (\Throwable $e) {
+				Yii::error('sendStatusInWork failed: ' . $e->getMessage(), __METHOD__);
+			}
 
 			$ioi = InboundOrderItem::find()
 								   ->andWhere(['inbound_order_id' => $model->order_number,
@@ -399,7 +403,11 @@ class ScanningController extends Controller
 					EcommerceStock::deleteAll('inbound_id = :inbound_id AND status != :status',[':inbound_id'=>$io->id,':status'=>EcommerceStock::STATUS_INBOUND_CONFIRM]);
 
 					$messages [] =  Yii::t('inbound/errors','Накладная с номером ' . $io->order_number . ' успешно принята');
-					(new InboundScanningService())->sendStatusCompleted($io->id);
+					try {
+						(new InboundScanningService())->sendStatusCompleted($io->id);
+					} catch (\Throwable $e) {
+						Yii::error('sendStatusCompleted failed: ' . $e->getMessage(), __METHOD__);
+					}
 
 				}
 			} else {

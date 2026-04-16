@@ -1,6 +1,6 @@
 <?php
 
-namespace stockDepartment\modules\intermode\controllers\common\apilogs\consts;
+namespace stockDepartment\modules\alix\controllers\common\apilogs\consts;
 
 class OrderType
 {

@@ -12,7 +12,7 @@ use yii\bootstrap\Alert;
 use yii\helpers\Url;
 use yii\helpers\Html;
 
-\stockDepartment\modules\intermode\assets\ScanOutboundFormAsset::register($this);
+\stockDepartment\modules\alix\assets\ScanOutboundFormAsset::register($this);
 
 ?>
 <h1>Отгрузка Subaru Auto</h1>

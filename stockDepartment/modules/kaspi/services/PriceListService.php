@@ -34,7 +34,14 @@ use yii\helpers\BaseFileHelper;
 class PriceListService extends Component
 {
     const PRICE_LIST_FILE = 'kaspi-price-list.xlsx';
+    const PRICE_LIST_XML_FILE = 'kaspi-price-list.xml';
     const PRICE_LIST_DIR_ALIAS = '@stockDepartment/modules/kaspi/price-list';
+    const PRICE_LIST_WEB_DIR_ALIAS = '@stockDepartment/web';
+
+    // TODO: заменить на реальные данные из кабинета Kaspi
+    const KASPI_COMPANY = 'COMPANY_NAME';
+    const KASPI_MERCHANT_ID = 'MERCHANT_ID';
+    const KASPI_STORE_ID = 'STORE_ID';
 
     /**
      * Сгенерировать Excel-прайс-лист и вернуть путь к файлу.
@@ -43,7 +50,9 @@ class PriceListService extends Component
      */
     public function generate()
     {
-        return $this->writeExcel($this->buildCurrentPriceList());
+        $rows = $this->buildCurrentPriceList();
+        $this->writeExcel($rows);
+        $this->writeXml($rows);
     }
 
     /**
@@ -54,7 +63,8 @@ class PriceListService extends Component
      */
     public function generateFromRows(array $rows)
     {
-        return $this->writeExcel($rows);
+        $this->writeExcel($rows);
+        $this->writeXml($rows);
     }
 
     /**
@@ -146,6 +156,11 @@ class PriceListService extends Component
     public function getFilePath()
     {
         return rtrim(Yii::getAlias(self::PRICE_LIST_DIR_ALIAS), '/') . '/' . self::PRICE_LIST_FILE;
+    }
+
+    public function getXmlFilePath()
+    {
+        return rtrim(Yii::getAlias(self::PRICE_LIST_DIR_ALIAS), '/') . '/' . self::PRICE_LIST_XML_FILE;
     }
 
     // MARK: - Private
@@ -290,6 +305,68 @@ class PriceListService extends Component
 
         $objWriter = \PHPExcel_IOFactory::createWriter($objPHPExcel, 'Excel2007');
         $objWriter->save($fullPath);
+
+        return $fullPath;
+    }
+
+    /**
+     * Записать XML-файл в формате Kaspi.
+     *
+     * @see https://guide.kaspi.kz/partner/ru/shop/goods/price_list/q3251
+     *
+     * @param array $rows
+     * @return string Путь до файла
+     */
+    private function writeXml(array $rows)
+    {
+        $dirPath = Yii::getAlias(self::PRICE_LIST_DIR_ALIAS);
+        BaseFileHelper::createDirectory($dirPath);
+
+        $fullPath = rtrim($dirPath, '/') . '/' . self::PRICE_LIST_XML_FILE;
+
+        $date = date('Y-m-d H:i');
+
+        $xml = new \DOMDocument('1.0', 'utf-8');
+        $xml->formatOutput = true;
+
+        $catalog = $xml->createElement('kaspi_catalog');
+        $catalog->setAttribute('date', $date);
+        $catalog->setAttribute('xmlns', 'kaspiShopping');
+        $catalog->setAttribute('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
+        $catalog->setAttribute('xsi:schemaLocation', 'kaspiShopping http://kaspi.kz/kaspishopping.xsd');
+        $xml->appendChild($catalog);
+
+        $catalog->appendChild($xml->createElement('company', self::KASPI_COMPANY));
+        $catalog->appendChild($xml->createElement('merchantid', self::KASPI_MERCHANT_ID));
+
+        $offers = $xml->createElement('offers');
+        $catalog->appendChild($offers);
+
+        foreach ($rows as $item) {
+            $offer = $xml->createElement('offer');
+            $offer->setAttribute('sku', (string) $item['sku']);
+
+            $offer->appendChild($xml->createElement('model', htmlspecialchars((string) $item['model'])));
+            $offer->appendChild($xml->createElement('brand', htmlspecialchars((string) $item['brand'])));
+
+            $availabilities = $xml->createElement('availabilities');
+            $availability = $xml->createElement('availability');
+            $availability->setAttribute('available', (int) $item['qty'] > 0 ? 'yes' : 'no');
+            $availability->setAttribute('storeId', self::KASPI_STORE_ID);
+            $availability->setAttribute('stockCount', (string) (int) $item['qty']);
+            $availabilities->appendChild($availability);
+            $offer->appendChild($availabilities);
+
+            $offer->appendChild($xml->createElement('price', (string) (int) round($item['price'])));
+
+            $offers->appendChild($offer);
+        }
+
+        $xml->save($fullPath);
+
+        // Копируем в web/ для публичного доступа (автозагрузка Kaspi)
+        $webPath = rtrim(Yii::getAlias(self::PRICE_LIST_WEB_DIR_ALIAS), '/') . '/' . self::PRICE_LIST_XML_FILE;
+        @copy($fullPath, $webPath);
 
         return $fullPath;
     }

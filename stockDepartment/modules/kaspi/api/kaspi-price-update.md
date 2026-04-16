@@ -15,7 +15,7 @@
 
 ```json
 {
-  "product_guid":   "KZ_SKU_12345",
+  "product_guid":   "1100014950",
   "price":          19990.00,
   "price_type":     "BASE",
   "note":           "Весенняя коллекция",
@@ -28,27 +28,29 @@
 ```json
 [
   {
-    "product_guid": "KZ_SKU_12345",
-    "price":        19990.00,
+    "product_guid": "1100014950",
+    "price":        5990.00,
     "price_type":   "BASE"
   },
   {
-    "product_guid":   "KZ_SKU_99999",
-    "price":          5490.00,
-    "price_type":     "SALE",
-    "note":           "Какой-то текст",
+    "product_guid":   "1100005014",
+    "price":          3490.00,
+    "price_type":     "BASE",
+    "note":           "Акция",
     "effective_from": "2026-06-01"
   }
 ]
 ```
 
+> `product_guid` принимает как **артикул** (`1100014950`), так и **GUID** (`e8a98110-2cf0-11f1-...`). В `kaspi_price_history` всегда сохраняются оба значения.
+
 ### Поля запроса
 
 | Поле             | Тип     | Обязательное | Описание |
 |------------------|---------|:------------:|----------|
-| `product_guid`   | string  | да           | GUID товара. Максимум 128 символов. |
-| `price`          | number  | да           | Новая цена в KZT. Минимум `0`. |
-| `price_type`     | string  | да           | Тип цены. Значения: `BASE`. Максимум 64 символа. |
+| `product_guid`   | string  | да           | **Артикул** или **GUID** товара из product_v2. Максимум 128 символов. |
+| `price`          | number  | да           | Новая цена в KZT. Минимум `1`. |
+| `price_type`     | string  | нет          | Тип цены: `BASE` (по умолчанию), `SALE`, `PROMO`. |
 | `note`           | string  | нет          | Произвольный комментарий к изменению цены. |
 | `effective_from` | string  | нет          | Дата активации цены в формате `Y-m-d` (например `2026-06-01`). По умолчанию — сегодня. |
 
@@ -56,24 +58,68 @@
 
 ## Ответы
 
-### 200 — цена(ы) применены немедленно
+### 200 — цены применены
 
 ```json
 {
   "status": "generated",
-  "prices": 2
+  "prices_saved": 3,
+  "in_price_list": 2,
+  "applied": ["1100014950", "1100005014"],
+  "not_in_stock": ["1100014749"],
+  "download_url_xlsx": "/kaspi/api/v1/price-list-download",
+  "download_url_xml": "/kaspi/api/v1/price-list-download-xml"
 }
 ```
+
+| Поле | Описание |
+|------|----------|
+| `prices_saved` | Сколько записей сохранено в `kaspi_price_history` |
+| `in_price_list` | Сколько товаров реально попало в прайс |
+| `applied` | Артикулы, цена которых обновилась в прайсе |
+| `not_in_stock` | Артикулы, которых нет на складе — цена сохранена в историю, но в прайс не попала (поле отсутствует если все товары на складе) |
+| `download_url_xlsx` | URL для скачивания Excel-прайса (ручная загрузка в кабинет Kaspi) |
+| `download_url_xml` | URL для скачивания XML-прайса (автоматическая загрузка Kaspi) |
+
+### XML-формат прайса
+
+XML генерируется одновременно с Excel. Формат соответствует спецификации Kaspi:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<kaspi_catalog date="2026-04-16 19:42" xmlns="kaspiShopping" ...>
+  <company>COMPANY_NAME</company>
+  <merchantid>MERCHANT_ID</merchantid>
+  <offers>
+    <offer sku="1100014950">
+      <model>СИЯЮЩИЙ ПРАЙМЕР ДЛЯ ЛИЦА</model>
+      <brand>Alix Avien</brand>
+      <availabilities>
+        <availability available="yes" storeId="STORE_ID" stockCount="10"/>
+      </availabilities>
+      <price>5990</price>
+    </offer>
+  </offers>
+</kaspi_catalog>
+```
+
+Для автоматической загрузки укажите URL XML-файла в кабинете Kaspi:
+**Товары → Загрузить прайс-лист → Автоматическая загрузка**
+
+> Константы `COMPANY_NAME`, `MERCHANT_ID`, `STORE_ID` — плейсхолдеры. Замените на реальные данные из кабинета Kaspi в `PriceListService.php`.
 
 ### 200 — часть цен запланирована на будущее
 
 ```json
 {
   "status": "generated",
-  "prices": 2,
+  "prices_saved": 3,
+  "in_price_list": 1,
+  "applied": ["1100014950"],
+  "not_in_stock": ["1100014749"],
   "scheduled": [
     {
-      "product_guid":   "KZ_SKU_99999",
+      "product_guid": "1100005014",
       "effective_from": "2026-06-01"
     }
   ]
@@ -85,10 +131,10 @@
 ```json
 {
   "status": "scheduled",
-  "prices": 1,
+  "prices_saved": 2,
   "scheduled": [
     {
-      "product_guid":   "KZ_SKU_12345",
+      "product_guid": "1100014950",
       "effective_from": "2026-07-01"
     }
   ]
@@ -100,7 +146,7 @@
 ```json
 {
   "status":  "error",
-  "prices":  1,
+  "saved":   3,
   "message": "<причина>"
 }
 ```

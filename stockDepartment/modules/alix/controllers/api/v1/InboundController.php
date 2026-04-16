@@ -25,7 +25,6 @@ class InboundController extends Controller
     public function actionOrders()
     {
 		$request = Yii::$app->getRequest()->getBodyParams();
-		file_put_contents("InboundController_b2b_actionOrders.log", date(DATE_ISO8601)."\n"."request:"."\n".print_r($request,true)."\n"."\n",FILE_APPEND);
 
 //		VarDumper::dump($request,10,true);
 //		die;
@@ -64,9 +63,9 @@ class InboundController extends Controller
 			if (empty($order)) {
 				return;
 			}
-			TelegramalixB2BNotification::sendMessageIfNewInboundOrder(
-				new NewInboundOrderMsgDTO($order->order_number,$order->expected_qty,$order->comments)
-			);
+			// TelegramalixB2BNotification::sendMessageIfNewInboundOrder(
+			// 	new NewInboundOrderMsgDTO($order->order_number,$order->expected_qty,$order->comments)
+			// );
 		} catch (\Throwable $e) {
 			Yii::error('Telegram notify failed: ' . $e->getMessage(), __METHOD__);
 		}
@@ -75,7 +74,6 @@ class InboundController extends Controller
 	public function actionReturns()
 	{
 		$request = Yii::$app->getRequest()->getBodyParams();
-		file_put_contents("InboundController_actionReturns.log", date(DATE_ISO8601)."\n"."request:"."\n".print_r($request,true)."\n"."\n",FILE_APPEND);
 
 //		VarDumper::dump($request,10,true);
 //		die;

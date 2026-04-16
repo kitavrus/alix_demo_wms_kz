@@ -172,16 +172,42 @@ POST /kaspi/api/v1/price-update
 - Каждый вызов создаёт новую запись в `kaspi_price_history` (полная история)
 - В `kaspi_price_history` сохраняются и GUID, и артикул
 
-**Ответ:**
+**Ответ (цены применены):**
 ```json
 {
   "status": "generated",
-  "prices": 3
+  "prices_saved": 3,
+  "in_price_list": 2,
+  "applied": ["1100014950", "1100005014"],
+  "not_in_stock": ["1100014749"],
+  "download_url_xlsx": "/kaspi/api/v1/price-list-download",
+  "download_url_xml": "/kaspi/api/v1/price-list-download-xml"
+}
+```
+
+| Поле | Описание |
+|------|----------|
+| `prices_saved` | Сколько записей сохранено в `kaspi_price_history` |
+| `in_price_list` | Сколько товаров реально попало в прайс |
+| `applied` | Артикулы, цена которых обновилась в прайсе |
+| `not_in_stock` | Артикулы, которых нет на складе — цена сохранена в историю, но в прайс не попала |
+| `download_url_xlsx` | URL для скачивания Excel-прайса (ручная загрузка в кабинет Kaspi) |
+| `download_url_xml` | URL для скачивания XML-прайса (автоматическая загрузка Kaspi) |
+
+**Ответ (все цены запланированы на будущее):**
+```json
+{
+  "status": "scheduled",
+  "prices_saved": 2,
+  "scheduled": [
+    {"product_guid": "1100014950", "effective_from": "2026-05-01"},
+    {"product_guid": "1100005014", "effective_from": "2026-05-01"}
+  ]
 }
 ```
 
 Возможные значения `status`:
-- `generated` — Excel создан, цены активны
+- `generated` — Excel создан, цены применены
 - `scheduled` — все цены запланированы на будущее
 - `validation_error` — ошибки валидации
 - `error` — ошибка генерации

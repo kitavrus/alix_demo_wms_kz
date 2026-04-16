@@ -7,7 +7,7 @@ use yii\helpers\Url;
 
 /* @var $this yii\web\View */
 /* @var $form yii\widgets\ActiveForm */
-/* @var $inboundForm stockDepartment\modules\intermode\controllers\ecommerce\inbound\domain\InboundForm */
+/* @var $inboundForm stockDepartment\modules\alix\controllers\ecommerce\inbound\domain\InboundForm */
 
 $this->title = Yii::t('inbound/titles', 'Обработка возвратов');
 ?>
@@ -62,7 +62,7 @@ $this->title = Yii::t('inbound/titles', 'Обработка возвратов')
                 'id' => 'inbound-form-order-number',
                 'class' => 'form-control input-lg',
                 'data-url' => Url::to(
-                    ['/intermode/ecommerce/inbound/returns/scanning/get-scanned-product-by-id']
+                    ['/alix/ecommerce/inbound/returns/scanning/get-scanned-product-by-id']
                 ),
             ]
         ); ?>
@@ -102,7 +102,7 @@ $this->title = Yii::t('inbound/titles', 'Обработка возвратов')
                 'id' => 'inbound-form-box_barcode',
                 'class' => 'form-control input-lg',
                 'data-url' => Url::to(
-                    '/intermode/ecommerce/inbound/returns/scanning/validate-scanned-box'
+                    '/alix/ecommerce/inbound/returns/scanning/validate-scanned-box'
                 )
             ]
         ); ?>
@@ -135,7 +135,7 @@ $this->title = Yii::t('inbound/titles', 'Обработка возвратов')
                 'id' => 'inbound-form-product_barcode',
                 'class' => 'form-control input-lg',
                 'data-url' => Url::to(
-                    '/intermode/ecommerce/inbound/returns/scanning/scan-product-in-box'
+                    '/alix/ecommerce/inbound/returns/scanning/scan-product-in-box'
                 )
             ]
         ); ?>

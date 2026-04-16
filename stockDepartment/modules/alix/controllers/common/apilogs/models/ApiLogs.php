@@ -1,6 +1,6 @@
 <?php
 
-namespace stockDepartment\modules\intermode\controllers\common\apilogs\models;
+namespace stockDepartment\modules\alix\controllers\common\apilogs\models;
 
 use Yii;
 

@@ -4,7 +4,7 @@ use yii\bootstrap\Alert;
 use yii\helpers\Url;
 use yii\helpers\Html;
 
-\stockDepartment\modules\intermode\assets\ScanOutboundFormAsset::register($this);
+\stockDepartment\modules\alix\assets\ScanOutboundFormAsset::register($this);
 ?>
 <div id="messages-scanning-container">
     <div id="messages-base-line"></div>

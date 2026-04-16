@@ -55,7 +55,7 @@ use yii\helpers\Html;
 
     <?= $form
         ->field($model, 'courierCompany')
-        ->dropDownList(\stockDepartment\modules\intermode\controllers\ecommerce\outbound\domain\constants\CourierCompany::getAll(), [
+        ->dropDownList(\stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\constants\CourierCompany::getAll(), [
             'prompt' => 'Укажите компанию курьер',
             'class' => 'form-control input-lg',
             'data-url' => Url::toRoute('courier-company')

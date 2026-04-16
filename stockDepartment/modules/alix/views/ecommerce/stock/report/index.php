@@ -41,7 +41,7 @@ $this->params['breadcrumbs'][] = $this->title;
     ]); ?>
 </div>
 <div>
-    <?= Html::tag('span',Yii::t('transportLogistics/buttons','Export to Excel'),['class' => 'btn btn-success','id'=>'report-order-export-btn', 'data-url'=>'/ecommerce/intermode/stock/report/stock-export-to-excel']) ?>
+    <?= Html::tag('span',Yii::t('transportLogistics/buttons','Export to Excel'),['class' => 'btn btn-success','id'=>'report-order-export-btn', 'data-url'=>'/alix/ecommerce/stock/report/stock-export-to-excel']) ?>
     <br />
 </div>
 

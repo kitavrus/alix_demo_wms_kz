@@ -161,12 +161,39 @@ class PriceService extends Component
         }
 
         try {
-            $this->priceListService->generate();
+            $priceList = $this->priceListService->buildCurrentPriceList();
+            $this->priceListService->generateFromRows($priceList);
+
+            // Собираем SKU товаров, которые реально попали в Excel
+            $inExcel = [];
+            foreach ($priceList as $row) {
+                $inExcel[] = $row['sku'];
+            }
+
+            // Сверяем с тем, что пришло в запросе
+            $applied = [];
+            $notInStock = [];
+            foreach ($immediate as $record) {
+                $sku = !empty($record->article) ? $record->article : $record->product_guid;
+                if (in_array($sku, $inExcel)) {
+                    $applied[] = $sku;
+                } else {
+                    $notInStock[] = $sku;
+                }
+            }
 
             $response = [
-                'status' => 'generated',
-                'prices' => count($savedIds),
+                'status'        => 'generated',
+                'prices_saved'  => count($savedIds),
+                'in_price_list' => count($applied),
+                'applied'       => $applied,
+                'download_url_xlsx' => '/kaspi/api/v1/price-list-download',
+                'download_url_xml'  => '/kaspi/api/v1/price-list-download-xml',
+                'public_xml_url'    => '/kaspi-price-list.xml',
             ];
+            if (!empty($notInStock)) {
+                $response['not_in_stock'] = $notInStock;
+            }
             if (!empty($scheduled)) {
                 $response['scheduled'] = array_map(function ($s) {
                     return [

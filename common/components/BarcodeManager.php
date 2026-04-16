@@ -106,6 +106,11 @@ class BarcodeManager extends Component
                 }
             }
 
+            // ШК короба формата 5000XXXXXXXX (12 цифр)
+            if(substr($barcode, 0, 4) === '5000' && strlen($barcode) == 12 && ctype_digit($barcode)) {
+                return true;
+            }
+
             //s: 243
             $barcode = trim($barcode);
             $code = substr($barcode, 0, 3);

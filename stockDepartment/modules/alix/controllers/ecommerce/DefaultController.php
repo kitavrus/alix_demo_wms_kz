@@ -1,9 +1,9 @@
 <?php
-namespace stockDepartment\modules\intermode\controllers\ecommerce;
+namespace stockDepartment\modules\alix\controllers\ecommerce;
 
-use stockDepartment\modules\intermode\controllers\ecommerce\outbound\domain\OutboundReservationService;
-use stockDepartment\modules\intermode\controllers\ecommerce\outbound\domain\repository\OutboundRepository;
-use stockDepartment\modules\intermode\controllers\ecommerce\outbound\domain\constants\OutboundStatus;
+use stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\OutboundReservationService;
+use stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\repository\OutboundRepository;
+use stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\constants\OutboundStatus;
 
 class DefaultController extends  \stockDepartment\components\Controller
 {
@@ -14,13 +14,13 @@ class DefaultController extends  \stockDepartment\components\Controller
 
     public function actionResendOutboundStatus()
     {
-		// /intermode/ecommerce/default/resend-outbound-status
+		// /alix/ecommerce/default/resend-outbound-status
 		
 		 \Yii::$app->getSession()->setFlash('success', "status: resend-outbound-status empty");
 		return $this->render('index');
 		
 		
-		$service = new \stockDepartment\modules\intermode\controllers\ecommerce\outbound\domain\OutboundScanningService();
+		$service = new \stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\OutboundScanningService();
 		$orderNumber = "3274";
 		$apiStatus = $service->package($orderNumber);
 		\Yii::$app->getSession()->setFlash('success', "status: ".print_r($apiStatus,true));
@@ -29,8 +29,8 @@ class DefaultController extends  \stockDepartment\components\Controller
 	
 	public function actionResetAndCancelOutbound($id)
     {
-		// /intermode/ecommerce/default/reset-and-cancel-outbound
-		$service = new \stockDepartment\modules\intermode\controllers\ecommerce\outbound\domain\OutboundReservationService();
+		// /alix/ecommerce/default/reset-and-cancel-outbound
+		$service = new \stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\OutboundReservationService();
 		$apiStatus = $service->resetAnCancelByOutboundOrderId($id);
 		\Yii::$app->getSession()->setFlash('success', "status: ".print_r($apiStatus,true));
         return $this->redirect('index');
@@ -38,17 +38,17 @@ class DefaultController extends  \stockDepartment\components\Controller
 	
 	public function actionResetOutbound($id)
     {
-		// /intermode/ecommerce/default/reset-outbound?id=3877
-		// http://intermode-kz.nmdx.kz//intermode/ecommerce/default/reset-outbound?id=7012
+		// /alix/ecommerce/default/reset-outbound?id=3877
+		// http://intermode-kz.nmdx.kz//alix/ecommerce/default/reset-outbound?id=7012
 		
-		// http://intermode-kz.nmdx.kz//intermode/ecommerce/default/reset-outbound?id=6741
-		// http://intermode-kz.nmdx.kz//intermode/ecommerce/default/reset-outbound?id=6122
-		// http://intermode-kz.nmdx.kz//intermode/ecommerce/default/reset-outbound?id=3881
-		// http://intermode-kz.nmdx.kz//intermode/ecommerce/default/reset-outbound?id=3882
+		// http://intermode-kz.nmdx.kz//alix/ecommerce/default/reset-outbound?id=6741
+		// http://intermode-kz.nmdx.kz//alix/ecommerce/default/reset-outbound?id=6122
+		// http://intermode-kz.nmdx.kz//alix/ecommerce/default/reset-outbound?id=3881
+		// http://intermode-kz.nmdx.kz//alix/ecommerce/default/reset-outbound?id=3882
 		
-		// http://intermode-kz.nmdx.kz//intermode/ecommerce/default/reset-outbound?id=3876
-		// http://intermode-kz.nmdx.kz//intermode/ecommerce/default/reset-outbound?id=9059
-		$service = new \stockDepartment\modules\intermode\controllers\ecommerce\outbound\domain\OutboundReservationService();
+		// http://intermode-kz.nmdx.kz//alix/ecommerce/default/reset-outbound?id=3876
+		// http://intermode-kz.nmdx.kz//alix/ecommerce/default/reset-outbound?id=9059
+		$service = new \stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\OutboundReservationService();
 		$bool = $service->resetByOutboundOrderId($id);
 		//$bool = $service->resetByOutboundOrderId(4950);
 		//$bool = $service->resetByOutboundOrderId(3876);
@@ -65,15 +65,15 @@ class DefaultController extends  \stockDepartment\components\Controller
  
 	public function actionReReserving($id)
 	{
-		// /intermode/ecommerce/default/re-reserving?id=3877
-		// http://intermode-kz.nmdx.kz/intermode/ecommerce/default/re-reserving?id=-1
+		// /alix/ecommerce/default/re-reserving?id=3877
+		// http://intermode-kz.nmdx.kz/alix/ecommerce/default/re-reserving?id=-1
 		//die("STOP");
 		
-		$service = new \stockDepartment\modules\intermode\controllers\ecommerce\outbound\domain\OutboundReservationService();
+		$service = new \stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\OutboundReservationService();
 		//$bool = $service->resetByOutboundOrderId($id);
 		//$bool = $service->resetByOutboundOrderId(4950);
 
-		$reservationService = new \stockDepartment\modules\intermode\controllers\ecommerce\outbound\domain\OutboundReservationService();
+		$reservationService = new \stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\OutboundReservationService();
 		$repository = new OutboundRepository();
 
 		$orderIDs = [
@@ -97,7 +97,7 @@ class DefaultController extends  \stockDepartment\components\Controller
 	
 	public function actionResetAndSetRepeatOutbound($id)
     {
-		// /intermode/ecommerce/default/reset-and-set-repeat-outbound
+		// /alix/ecommerce/default/reset-and-set-repeat-outbound
 		$service = new OutboundReservationService();
 		$service->resetByOutboundOrderId($id);
 
@@ -108,6 +108,6 @@ class DefaultController extends  \stockDepartment\components\Controller
 		$order->save(false);
 		
 		\Yii::$app->getSession()->setFlash('success', "Заказ отменен т.к это дубль: ".$order->order_number);
-        return $this->redirect('/intermode/ecommerce/outbound/report/index');
+        return $this->redirect('/alix/ecommerce/outbound/report/index');
     }
 }

@@ -8,7 +8,7 @@
 use yii\helpers\Html;
 use yii\helpers\ArrayHelper;
 use yii\widgets\ActiveForm;
-use stockDepartment\modules\intermode\controllers\ecommerce\barcode\domain\entities\EcommerceBarcodeManager;;
+use stockDepartment\modules\alix\controllers\ecommerce\barcode\domain\entities\EcommerceBarcodeManager;;
 
 ?>
 <div class="print-any-barcode-form">
@@ -33,7 +33,7 @@ use stockDepartment\modules\intermode\controllers\ecommerce\barcode\domain\entit
              codebook_id = $('#printbarcode-codebook_id').val(),
              qty = $('#printbarcode-quantity').val();
 
-            window.location.href = '/intermode/ecommerce/barcode/default/print-barcode-pdf/?codebook_id='+codebook_id+'&qty='+qty;
+            window.location.href = '/alix/ecommerce/barcode/default/print-barcode-pdf/?codebook_id='+codebook_id+'&qty='+qty;
             return false;
         });
     });

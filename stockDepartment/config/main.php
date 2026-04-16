@@ -231,6 +231,11 @@ return [
 					'verb'    => 'GET'
 				],
 				[
+					'pattern' => "kaspi/api/v1/price-list-download-xml",
+					'route'   => "kaspi/api/v1/kaspi/price-list-download-xml",
+					'verb'    => 'GET'
+				],
+				[
 					'pattern' => "kaspi/api/v1/price-list-generate",
 					'route'   => "kaspi/api/v1/kaspi/price-list-generate",
 					'verb'    => 'POST'

@@ -11,7 +11,7 @@ use yii\helpers\Url;
 /* @var $clientsArray common\modules\client\models\Client */
 /* @var $inboundForm stockDepartment\modules\inbound\models\InboundForm */
 
-stockDepartment\modules\intermode\controllers\inbound\domain\assets\InboundAsset::register($this);
+stockDepartment\modules\alix\controllers\inbound\domain\assets\InboundAsset::register($this);
 ?>
 
 <?php $this->title = Yii::t('inbound/titles', 'Inbound Orders'); ?>
@@ -83,8 +83,8 @@ stockDepartment\modules\intermode\controllers\inbound\domain\assets\InboundAsset
             'id' => 'inbound-form-party-number',
             'class' => 'form-control input-lg',
 //            'data-url' => '/wms/erenRetail/inbound/get-in-process-inbound-orders-by-client-id'
-            //'data-url' => '/intermode/inbound/scanning/get-in-process-inbound-orders-by-client-id'
-            'data-url' => '/intermode/inbound/scanning/get-in-process-inbound-orders-by-party-id'
+            //'data-url' => '/alix/inbound/scanning/get-in-process-inbound-orders-by-client-id'
+            'data-url' => '/alix/inbound/scanning/get-in-process-inbound-orders-by-party-id'
         ]
     ); ?>
 
@@ -104,7 +104,7 @@ stockDepartment\modules\intermode\controllers\inbound\domain\assets\InboundAsset
             'id' => 'inbound-form-order-number',
             'class' => 'form-control input-lg',
 //            'data-url' => Url::to('/wms/erenRetail/inbound/get-scanned-product-by-id')
-            'data-url' => Url::to('/intermode/inbound/scanning/get-scanned-product-by-id')
+            'data-url' => Url::to('/alix/inbound/scanning/get-scanned-product-by-id')
         ]
     ); ?>
 
@@ -122,7 +122,7 @@ stockDepartment\modules\intermode\controllers\inbound\domain\assets\InboundAsset
             'id' => 'inbound-form-box_barcode',
             'class' => 'form-control input-lg',
 //            'data-url' => Url::to('/wms/erenRetail/inbound/validate-scanned-box')
-            'data-url' => Url::to('/intermode/inbound/scanning/validate-scanned-box')
+            'data-url' => Url::to('/alix/inbound/scanning/validate-scanned-box')
         ]
     ); ?>
 
@@ -140,7 +140,7 @@ stockDepartment\modules\intermode\controllers\inbound\domain\assets\InboundAsset
             'id' => 'inbound-form-product_barcode',
             'class' => 'form-control input-lg',
 //            'data-url' => Url::to('/wms/erenRetail/inbound/scan-product-in-box')
-            'data-url' => Url::to('/intermode/inbound/scanning/scan-product-in-box')
+            'data-url' => Url::to('/alix/inbound/scanning/scan-product-in-box')
         ]); ?>
 
 	<?= $form->field($inboundForm, 'datamatrix')->textInput([
@@ -181,5 +181,5 @@ stockDepartment\modules\intermode\controllers\inbound\domain\assets\InboundAsset
             <tbody id="inbound-item-body"></tbody>
         </table>
     </div>
-	        <?= Html::tag('span', Yii::t('inbound/buttons', 'Accept').'<span id="inbound-messages-process"> </span>', ['class' => 'btn btn-danger pull-right', 'data-url' => Url::toRoute('/intermode/inbound/scanning/confirm-order'), 'style' => ' margin-left:10px;', 'id' => 'inbound-accept-bt']) ?>
+	        <?= Html::tag('span', Yii::t('inbound/buttons', 'Accept').'<span id="inbound-messages-process"> </span>', ['class' => 'btn btn-danger pull-right', 'data-url' => Url::toRoute('/alix/inbound/scanning/confirm-order'), 'style' => ' margin-left:10px;', 'id' => 'inbound-accept-bt']) ?>
 </div>
