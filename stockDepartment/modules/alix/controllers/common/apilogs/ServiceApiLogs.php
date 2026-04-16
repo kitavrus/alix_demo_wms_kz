@@ -1,12 +1,12 @@
 <?php
 
-namespace stockDepartment\modules\intermode\controllers\common\apilogs;
+namespace stockDepartment\modules\alix\controllers\common\apilogs;
 
 
-use stockDepartment\modules\intermode\controllers\common\apilogs\consts\OrderType;
-use stockDepartment\modules\intermode\controllers\common\apilogs\dto\AddRequest;
-use stockDepartment\modules\intermode\controllers\common\apilogs\dto\AddResponse;
-use stockDepartment\modules\intermode\controllers\common\apilogs\models\ApiLogs;
+use stockDepartment\modules\alix\controllers\common\apilogs\consts\OrderType;
+use stockDepartment\modules\alix\controllers\common\apilogs\dto\AddRequest;
+use stockDepartment\modules\alix\controllers\common\apilogs\dto\AddResponse;
+use stockDepartment\modules\alix\controllers\common\apilogs\models\ApiLogs;
 use yii\helpers\VarDumper;
 
 class ServiceApiLogs

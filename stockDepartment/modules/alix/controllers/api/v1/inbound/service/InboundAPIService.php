@@ -163,12 +163,8 @@ class InboundAPIService
 	 */
 	private function sendStatus($payload,$request)
 	{
-		$logFileNAme = "sendInboundStatus-b2b_".$payload["order_id"].".log";
-		file_put_contents($logFileNAme,date(DATE_ISO8601)."\n"."Payload:"."\n".print_r($payload,true)."\n",FILE_APPEND);
 		$request->setData($payload);
-		file_put_contents($logFileNAme,date(DATE_ISO8601)."\n"."Request:"."\n".print_r($request->toString(),true)."\n",FILE_APPEND);
 		$response = $request->send();
-		file_put_contents($logFileNAme,date(DATE_ISO8601)."\n"."Response:"."\n".print_r($response->toString(),true)."\n"."\n",FILE_APPEND);
 		return $response;
 	}
 }

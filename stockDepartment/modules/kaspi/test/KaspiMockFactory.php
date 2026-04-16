@@ -248,6 +248,32 @@ class KaspiMockFactory
         ];
     }
 
+    /**
+     * Минимальный валидный PDF для моков этикетки.
+     * Содержит строку с orderId, чтобы по файлу было видно, на какой заказ мок.
+     */
+    public static function getShippingLabelPdfMock($orderId)
+    {
+        $text = 'Kaspi label mock for order ' . $orderId;
+        $textLen = strlen($text);
+
+        $pdf = "%PDF-1.4\n"
+            . "1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+            . "2 0 obj<</Type/Pages/Count 1/Kids[3 0 R]>>endobj\n"
+            . "3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n"
+            . "4 0 obj<</Length " . ($textLen + 40) . ">>stream\n"
+            . "BT /F1 12 Tf 72 720 Td (" . $text . ") Tj ET\n"
+            . "endstream endobj\n"
+            . "5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\n"
+            . "xref\n0 6\n0000000000 65535 f\n"
+            . "trailer<</Size 6/Root 1 0 R>>\nstartxref\n0\n%%EOF";
+
+        return [
+            'mime' => 'application/pdf',
+            'body' => $pdf,
+        ];
+    }
+
     public static function getProductsV2OffersSchema()
     {
         return [

@@ -26,6 +26,8 @@ use Yii;
  * @property int $created_at Created at
  * @property int $updated_at Updated at
  * @property int $deleted Deleted
+ * @property string $source_kaspi_order_id ID оригинального Kaspi-заказа (для возвратов)
+ * @property string $source_kaspi_refund_code Код возврата на стороне Kaspi
  */
 class EcommerceInbound extends \common\models\ActiveRecord
 {
@@ -45,6 +47,7 @@ class EcommerceInbound extends \common\models\ActiveRecord
         return [
             [['date_confirm','client_id', 'expected_box_qty', 'accepted_box_qty', 'expected_lot_qty', 'accepted_lot_qty', 'expected_product_qty', 'accepted_product_qty', 'status', 'begin_datetime', 'end_datetime', 'created_user_id', 'updated_user_id', 'created_at', 'updated_at', 'deleted'], 'integer'],
             [['party_number', 'order_number'], 'string', 'max' => 36],
+            [['source_kaspi_order_id', 'source_kaspi_refund_code'], 'string', 'max' => 64],
         ];
     }
 

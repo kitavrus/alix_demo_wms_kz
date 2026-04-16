@@ -2,6 +2,9 @@
 
 namespace stockDepartment\modules\kaspi\services;
 
+use stockDepartment\modules\kaspi\dto\PartialReturnRequestDto;
+use stockDepartment\modules\kaspi\dto\PriceUpdateRequestDto;
+use stockDepartment\modules\kaspi\dto\StockUpdateRequestDto;
 use Yii;
 use yii\base\Component;
 
@@ -11,28 +14,65 @@ class KaspiService extends Component
     public $api;
     /** @var StockService|null */
     public $stockService;
+    /** @var PriceListService|null */
+    public $priceListService;
+    /** @var PriceService|null */
+    public $priceService;
+    /** @var StockHistoryService|null */
+    public $stockHistoryService;
+    /** @var OrderReturnService|null */
+    public $orderReturnService;
 
     public function init()
     {
         parent::init();
+
+        $module = Yii::$app->getModule('kaspi');
+
         if ($this->api === null) {
-            $module = Yii::$app->getModule('kaspi');
-            if ($module !== null) {
-                $this->api = $module->get('apiService');
-            }
+            $this->api = $module !== null ? $module->get('apiService') : null;
         }
         if (!$this->api instanceof KaspiAPIService) {
             $this->api = new KaspiAPIService();
             $this->api->init();
         }
+
         if ($this->stockService === null) {
-            $module = Yii::$app->getModule('kaspi');
-            if ($module !== null) {
-                $this->stockService = $module->get('stockService');
-            }
+            $this->stockService = $module !== null ? $module->get('stockService') : null;
         }
         if (!$this->stockService instanceof StockService) {
             $this->stockService = new StockService();
+        }
+
+        if ($this->priceListService === null) {
+            $this->priceListService = $module !== null ? $module->get('priceListService') : null;
+        }
+        if (!$this->priceListService instanceof PriceListService) {
+            $this->priceListService = new PriceListService();
+        }
+
+        if ($this->priceService === null) {
+            $this->priceService = $module !== null ? $module->get('priceService') : null;
+        }
+        if (!$this->priceService instanceof PriceService) {
+            $this->priceService = new PriceService();
+            $this->priceService->init();
+        }
+
+        if ($this->stockHistoryService === null) {
+            $this->stockHistoryService = $module !== null ? $module->get('stockHistoryService') : null;
+        }
+        if (!$this->stockHistoryService instanceof StockHistoryService) {
+            $this->stockHistoryService = new StockHistoryService();
+            $this->stockHistoryService->init();
+        }
+
+        if ($this->orderReturnService === null) {
+            $this->orderReturnService = $module !== null ? $module->get('orderReturnService') : null;
+        }
+        if (!$this->orderReturnService instanceof OrderReturnService) {
+            $this->orderReturnService = new OrderReturnService();
+            $this->orderReturnService->init();
         }
     }
 
@@ -43,13 +83,10 @@ class KaspiService extends Component
         return $this->api->getOrdersResponse($queryParams);
     }
 
-    // MARK: - Products
+    // MARK: - Products / Price list
 
     /**
      * Категории товаров
-     * GET /products/classification/categories
-     *
-     * @return array
      */
     public function productsClassificationCategories()
     {
@@ -58,10 +95,6 @@ class KaspiService extends Component
 
     /**
      * Характеристики товаров по коду категории
-     * GET /products/classification/attributes?c=...
-     *
-     * @param string $categoryCode
-     * @return array
      */
     public function productsClassificationAttributes($categoryCode)
     {
@@ -69,94 +102,226 @@ class KaspiService extends Component
     }
 
     /**
-     * Импортирует товары в Kaspi из доступных остатков.
-     * Большие объемы режет на пачки по 1000 товаров за один запрос.
+     * Генерирует единый Excel-прайс-лист kaspi-price-list.xlsx с остатками и ценами.
+     *
+     * Kaspi использует один файл для всего: цены + остатки по складам (PP1–PP5).
+     * После генерации файл нужно вручную загрузить в кабинет:
+     *   Товары → Загрузить прайс-лист
+     *
+     * Логика:
+     * - Берёт все товары с status_availability = YES из ecommerce_stock.
+     * - PP1 = количество единиц на складе.
+     * - price = последняя активная цена из kaspi_price_history,
+     *   либо product_price из ecommerce_stock если истории нет.
+     * - Товары без цены в файл не попадают.
+     * - После генерации помечает включённые SKU как SYNCED.
      */
     public function productsImportFromRequest()
     {
-        // Excel должен быть актуальным по текущему остатку на складе.
-        $stockProductsForExcel = $this->stockService->getAvailableStock();
-        // В Kaspi отправляем только то, что еще не помечено как синхронизированное.
-        $stockProductsToImport = $this->stockService->getStockToImportToKaspi();
+        // Фиксируем момент до запроса — защита от race condition при markKaspiStockAsSynced
+        $beforeTime = time();
+        $rows = $this->priceListService->buildCurrentPriceList();
 
-        $stockCount = is_array($stockProductsToImport) ? count($stockProductsToImport) : 0;
+        if (empty($rows)) {
+            return [
+                'status' => 'skipped',
+                'saved'  => 0,
+            ];
+        }
 
-        // Экспортируем остатки в xlsx для отладки/контроля (генератор в StockService).
-        $stockExcelFile = null;
         try {
-            $stockExcelFile = $this->stockService->exportAvailableStockToExcel($stockProductsForExcel);
+            // Используем уже собранные строки — избегаем повторного запроса к БД
+            $this->priceListService->generateFromRows($rows);
         } catch (\Exception $e) {
-            Yii::error('Kaspi stock export to excel failed: '.$e->getMessage(), __METHOD__);
-        }
-
-        if ($stockCount === 0) {
+            Yii::error('Kaspi price list generation failed: ' . $e->getMessage(), 'kaspi');
             return [
-                'status' => 'skipped',
-                'message' => 'No new stock to import to Kaspi (everything is already SYNCED)',
-                'stockCount' => 0,
-                'stockExcelFile' => $stockExcelFile,
+                'status'  => 'error',
+                'message' => $e->getMessage(),
             ];
         }
 
-        // Ограничение: если на складе слишком мало позиций, не дергаем Kaspi. Может это и не надо будет
-        if ($stockCount < 5) {
-            return [
-                'status' => 'skipped',
-                'message' => 'Not enough available stock to import to Kaspi (min 5)',
-                'stockCount' => $stockCount,
-                'stockExcelFile' => $stockExcelFile,
-            ];
-        }
-
-        $batchSize = 1000;
-        $processedCount = 0;
-        $batchIndex = 0;
-
-        for ($offset = 0; $offset < $stockCount; $offset += $batchSize) {
-            $batchIndex++;
-            $batch = array_slice($stockProductsToImport, $offset, $batchSize);
-            if (empty($batch)) {
-                break;
-            }
-
-            $kaspiResponse = $this->api->postProductsImportResponse($batch);
-
-            if (is_array($kaspiResponse) && !empty($kaspiResponse['error'])) {
-                return array_merge([
-                    'stockCount' => $stockCount,
-                    'failedBatchIndex' => $batchIndex,
-                    'processedCount' => $processedCount,
-                    'stockExcelFile' => $stockExcelFile,
-                ], $kaspiResponse);
-            }
-
-            $processedCount += count($batch);
-
-            // Если запрос к Kaspi прошёл успешно (и ошибок в ответе нет),
-            // помечаем SKU как синхронизированные.
-            $batchSkus = [];
-            foreach ($batch as $row) {
-                // В payload сейчас используется поле `sku`,
-                // но оставим поддержку старого варианта `product_sku`.
-                if (isset($row['sku']) && $row['sku'] !== '') {
-                    $batchSkus[] = (string) $row['sku'];
-                } elseif (isset($row['product_sku']) && $row['product_sku'] !== '') {
-                    $batchSkus[] = (string) $row['product_sku'];
-                }
-            }
-            $this->stockService->markKaspiStockAsSynced($batchSkus);
-        }
+        // Помечаем только записи, созданные до начала генерации
+        $skus = array_column($rows, 'sku');
+        $this->stockService->markKaspiStockAsSynced($skus, $beforeTime);
 
         return [
-            'status' => 'success',
-            'message' => 'Products imported to Kaspi from stock',
-            'stockCount' => $stockCount,
-            'stockExcelFile' => $stockExcelFile,
+            'status'   => 'generated',
+            'products' => count($rows),
         ];
     }
 
     public function getAvailableStock()
     {
         return $this->stockService->getAvailableStock();
+    }
+
+    // MARK: - Prices
+
+    /**
+     * Принять массив новых цен, сохранить в историю и перегенерировать Excel.
+     *
+     * Принимает как массив объектов, так и одиночный объект (оборачивает в массив).
+     *
+     * @param array $requestBody [{product_guid, price, price_type, note, effective_from}, ...]
+     * @return array
+     */
+    public function priceUpdate(array $requestBody)
+    {
+        $items = isset($requestBody[0]) ? $requestBody : [$requestBody];
+
+        $dtos   = [];
+        $errors = [];
+
+        foreach ($items as $index => $item) {
+            $dto = new PriceUpdateRequestDto();
+            $dto->load($item, '');
+
+            if (!$dto->validate()) {
+                $errors[] = ['index' => $index, 'errors' => $dto->getErrors()];
+            } else {
+                $dtos[] = $dto;
+            }
+        }
+
+        if (!empty($errors)) {
+            return [
+                'status' => 'validation_error',
+                'errors' => $errors,
+            ];
+        }
+
+        return $this->priceService->applyBatchPriceUpdate($dtos);
+    }
+
+    // MARK: - Stocks
+
+    /**
+     * Принять массив новых остатков, сохранить в историю и перегенерировать Excel.
+     *
+     * @param array $requestBody [{product_guid, qty, note?, effective_from?}, ...]
+     * @return array
+     */
+    public function stockUpdate(array $requestBody)
+    {
+        $items = isset($requestBody[0]) ? $requestBody : [$requestBody];
+
+        $dtos   = [];
+        $errors = [];
+
+        foreach ($items as $index => $item) {
+            $dto = new StockUpdateRequestDto();
+            $dto->load($item, '');
+
+            if (!$dto->validate()) {
+                $errors[] = ['index' => $index, 'errors' => $dto->getErrors()];
+            } else {
+                $dtos[] = $dto;
+            }
+        }
+
+        if (!empty($errors)) {
+            return [
+                'status' => 'validation_error',
+                'errors' => $errors,
+            ];
+        }
+
+        return $this->stockHistoryService->applyBatchStockUpdate($dtos);
+    }
+
+    // MARK: - Products import status
+
+    /**
+     * Прокси к Kaspi: статус задачи импорта товаров по коду.
+     */
+    public function productsImportStatus($importCode)
+    {
+        return $this->api->getProductsImportStatus((string) $importCode);
+    }
+
+    // MARK: - Order lifecycle
+
+    /**
+     * Передать заказ курьеру: формируем накладную и переводим заказ в KASPI_DELIVERY.
+     *
+     * @param string $orderId  Kaspi order id
+     * @param array  $payload  Доп. атрибуты накладной (waybill body)
+     * @return array
+     */
+    public function transferToCourier($orderId, array $payload = [])
+    {
+        $waybill = $this->api->createWaybill($orderId, $payload);
+        $statusResponse = $this->api->submitOrderKaspiDelivery($orderId);
+
+        return [
+            'status'         => 'OK',
+            'order_id'       => $orderId,
+            'order_status'   => 'KASPI_DELIVERY',
+            'waybill'        => $waybill,
+            'status_response' => $statusResponse,
+        ];
+    }
+
+    /**
+     * Получить PDF-этикетку заказа от Kaspi.
+     *
+     * @param string $orderId
+     * @return array{mime:string, body:string}
+     */
+    public function getOrderLabel($orderId)
+    {
+        return $this->api->getShippingLabel($orderId);
+    }
+
+    // MARK: - Returns
+
+    /**
+     * Сценарий A: отмена заказа до доставки с возвратом товаров на сток.
+     *
+     * @param string $kaspiOrderId
+     * @param array  $body {reason?}
+     * @return array
+     */
+    public function cancelReturnToStock($kaspiOrderId, array $body = [])
+    {
+        $reason = isset($body['reason']) ? (string) $body['reason'] : null;
+        return $this->orderReturnService->returnToStock($kaspiOrderId, $reason);
+    }
+
+    /**
+     * Сценарий B: частичный возврат после доставки (оператор заводит возврат).
+     *
+     * @param string $kaspiOrderId
+     * @param array  $body {items: [{product_guid, qty}], refund_code?, note?}
+     * @return array
+     */
+    public function partialReturn($kaspiOrderId, array $body)
+    {
+        $dto = new PartialReturnRequestDto();
+        $dto->load($body, '');
+
+        if (!$dto->validate()) {
+            return [
+                'status' => 'validation_error',
+                'errors' => $dto->getErrors(),
+            ];
+        }
+
+        return $this->orderReturnService->createPartialReturn($kaspiOrderId, $dto);
+    }
+
+    /**
+     * Окончательное подтверждение возврата — перевод Kaspi-заказа в RETURNED.
+     * Вызывается после приёмки возврата на склад (см. диаграмму return).
+     */
+    public function confirmReturnCompleted($kaspiOrderId)
+    {
+        $response = $this->orderReturnService->confirmReturnCompleted($kaspiOrderId);
+        return [
+            'status'         => 'OK',
+            'order_id'       => (string) $kaspiOrderId,
+            'order_status'   => 'RETURNED',
+            'kaspi_response' => $response,
+        ];
     }
 }

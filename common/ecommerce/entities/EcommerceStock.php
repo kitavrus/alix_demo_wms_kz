@@ -76,6 +76,15 @@ class EcommerceStock extends \common\models\ActiveRecord
     const STATUS_AVAILABILITY_BLOCKED = 4; // ЗАБЛОКИРОВАН недоступен для резервирования. Примеры, товар поврежден или потерян
     const STATUS_AVAILABILITY_TEMPORARILY_RESERVED = 5; // Частично зарезервирована. Это нужно для Солинс
 
+    const STATUS_INBOUND_NEW = 1;
+    const STATUS_INBOUND_SCANNING = 3;
+    const STATUS_INBOUND_SCANNED = 4;
+    const STATUS_INBOUND_OVER_SCANNED = 5;
+    const STATUS_INBOUND_COMPLETE = 8;
+    const STATUS_INBOUND_CONFIRM = 9;
+    const STATUS_OUTBOUND_SCANNED = 19;
+    const STATUS_INBOUND_CLOSE = 44;
+
     const KASPI_STOCK_STATUS_NOT_SET = '';
     const KASPI_STOCK_STATUS_NEW = 'NEW';
     const KASPI_STOCK_STATUS_SYNCED = 'SYNCED';

@@ -1,7 +1,7 @@
 <?php
-namespace stockDepartment\modules\intermode\controllers\inbound\domain;
+namespace stockDepartment\modules\alix\controllers\inbound\domain;
 
-use stockDepartment\modules\intermode\controllers\inbound\domain\InboundRepository;
+use stockDepartment\modules\alix\controllers\inbound\domain\InboundRepository;
 
 class InboundOrderValidation
 {
@@ -11,7 +11,7 @@ class InboundOrderValidation
 	public function __construct()
 	{
 		$this->inboundRepository = new InboundRepository();
-		$this->stockService = new \stockDepartment\modules\intermode\controllers\stock\domain\StockService();
+		$this->stockService = new \stockDepartment\modules\alix\controllers\stock\domain\StockService();
 	}
 	//
 	public function isExtraBarcodeInOrder($inboundID,$barcode) {

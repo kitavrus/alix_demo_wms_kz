@@ -64,12 +64,12 @@ $this->params['breadcrumbs'][] = $this->title;
 	<tr>
 		<td>
 			<p>
-				<?= Html::a('Это дубль', ['/intermode/ecommerce/default/reset-and-set-repeat-outbound', 'id' => $model->id], ['class' => 'btn btn-warning pull-left',"onclick"=>"return confirm('Вы действительно хотите сделать заказ \"ДУБЛЕМ\"')"]) ?>
+				<?= Html::a('Это дубль', ['/alix/ecommerce/default/reset-and-set-repeat-outbound', 'id' => $model->id], ['class' => 'btn btn-warning pull-left',"onclick"=>"return confirm('Вы действительно хотите сделать заказ \"ДУБЛЕМ\"')"]) ?>
 			</p>
 		</td>
 		<td>
 			<p>
-				<?= Html::a('Клиент отказался', ['/intermode/ecommerce/default/reset-and-cancel-outbound', 'id' => $model->id], ['class' => 'btn btn-danger pull-right',"onclick"=>"return confirm('Вы действительно хотите отменить заказ как \"ОТКАЗ КЛИЕНТА\"')"]) ?>
+				<?= Html::a('Клиент отказался', ['/alix/ecommerce/default/reset-and-cancel-outbound', 'id' => $model->id], ['class' => 'btn btn-danger pull-right',"onclick"=>"return confirm('Вы действительно хотите отменить заказ как \"ОТКАЗ КЛИЕНТА\"')"]) ?>
 			</p>
 		</td>
 	</tr>

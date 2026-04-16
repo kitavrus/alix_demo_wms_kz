@@ -1,6 +1,6 @@
 <?php
 
-use stockDepartment\modules\intermode\controllers\ecommerce\outbound\domain\constants\OutboundStatus;
+use stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\constants\OutboundStatus;
 use yii\helpers\Html;
 use yii\helpers\Url;
 
@@ -40,7 +40,7 @@ use yii\helpers\Url;
             'format' => 'html',
             'value' => function ($data) {
 //                return Html::tag('a', $data->order_number, ['href' => Url::to(['/ecommerce/intermode/outbound/report/view', 'id' => $data->id]), 'target' => '_blank']);
-                return Html::tag('a', $data->order_number, ['href' => Url::to(['/intermode/ecommerce/outbound/report/view', 'id' => $data->id]), 'target' => '_blank']);
+                return Html::tag('a', $data->order_number, ['href' => Url::to(['/alix/ecommerce/outbound/report/view', 'id' => $data->id]), 'target' => '_blank']);
             },
         ],
 //        'client_Priority',
@@ -75,7 +75,7 @@ use yii\helpers\Url;
                 alert('Нужно выбрать хотя бы одно заявку');
             } else {
                // window.location.href = '/ecommerce/intermode/outbound/picking/print?ids=' + keys;
-                window.location.href = '/intermode/ecommerce/outbound/picking/print?ids=' + keys;
+                window.location.href = '/alix/ecommerce/outbound/picking/print?ids=' + keys;
             }
             console.info(serialize);
         });

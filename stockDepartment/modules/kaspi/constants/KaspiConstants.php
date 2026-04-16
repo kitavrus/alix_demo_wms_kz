@@ -37,4 +37,12 @@ class KaspiConstants
     const ORDERS_ENDPOINT = 'orders';
     const ORDER_ENTRY_SUBPATH = 'entries';
     const ORDER_WAYBILL_SUBPATH = 'waybill';
+
+    // --- Alix 1C items API (мастер-данные номенклатуры) ---
+    const ALIX_1C_BASE_URL = 'http://185.249.195.105/DEV_KZ_RETAIL/hs/NMDX/';
+    const ALIX_1C_ITEMS_PATH = 'items';
+    const ALIX_1C_DEFAULT_USERNAME = 'Kaspi';
+    const ALIX_1C_DEFAULT_PASSWORD = '525';
+    const ALIX_1C_DEFAULT_TIMEOUT = 60;
+    const LOG_CATEGORY_ALIX_1C = 'alix.1c';
 }

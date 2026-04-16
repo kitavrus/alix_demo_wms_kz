@@ -5,6 +5,7 @@ namespace stockDepartment\modules\alix\controllers\product\domains;
 use common\modules\product\models\ProductBarcodes;
 use stockDepartment\modules\alix\controllers\product\domains\dto\Filter;
 use common\modules\product\models\Product;
+use stockDepartment\modules\kaspi\models\ProductV2;
 use yii\helpers\VarDumper;
 
 class ProductService
@@ -117,7 +118,7 @@ class ProductService
 		if (!empty($p->product)) {
 			$p->barcodes = $this->repository->getBarcodesById($p->product->id);
 		} else {
-			$p->product = new Product();
+			$p->product = new ProductV2();
 			$p->barcodes = [];
 		}
 		return $p;

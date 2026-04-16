@@ -5,6 +5,8 @@ namespace stockDepartment\modules\alix\controllers\product\domains;
 use common\modules\product\models\Product;
 use common\modules\product\models\ProductBarcodes;
 use common\overloads\ArrayHelper;
+use stockDepartment\modules\kaspi\models\ProductBarcodesV2;
+use stockDepartment\modules\kaspi\models\ProductV2;
 
 class ProductRepository
 {
@@ -111,10 +113,7 @@ class ProductRepository
 	 * */
 	public function getByGuid($guid)
 	{
-		return Product::find()->andWhere([
-			'client_id'=>$this->getClientID(),
-			'client_product_id'=>$guid
-		])->one();
+		return ProductV2::findByGuid($guid);
 	}
 	/**
 	 * @param string $id
@@ -124,8 +123,7 @@ class ProductRepository
 	{
 		return
 			\yii\helpers\ArrayHelper::map(
-			ProductBarcodes::find()->andWhere([
-			'client_id'=>$this->getClientID(),
+			ProductBarcodesV2::find()->andWhere([
 			'product_id'=>$id
 		])->asArray()
 		  ->all()

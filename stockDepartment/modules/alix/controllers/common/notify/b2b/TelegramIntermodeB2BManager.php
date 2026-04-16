@@ -1,6 +1,6 @@
 <?php
 
-namespace stockDepartment\modules\intermode\controllers\common\notify\b2b;
+namespace stockDepartment\modules\alix\controllers\common\notify\b2b;
 
 
 use yii\base\Exception;

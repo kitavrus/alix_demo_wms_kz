@@ -595,10 +595,65 @@ class KaspiAPIService extends Component
         );
     }
 
-    // Получить этикетку, пока TODO
+    /**
+     * Скачать PDF-этикетку заказа от Kaspi.
+     *
+     * Возвращает массив:
+     *   ['mime' => 'application/pdf', 'body' => <binary pdf>]
+     *
+     * В useMock-режиме возвращает минимальный валидный PDF из KaspiMockFactory.
+     *
+     * @param string $orderId
+     * @return array{mime:string, body:string}
+     */
     public function getShippingLabel($orderId)
     {
-        return null;
+        if ($this->useMock) {
+            return KaspiMockFactory::getShippingLabelPdfMock($orderId);
+        }
+
+        $request = $this->createRequest()
+            ->setMethod('GET')
+            ->setUrl($this->orderSubResourceUrl($orderId, KaspiConstants::ORDER_WAYBILL_SUBPATH));
+        $request->headers->set('Accept', 'application/pdf');
+
+        if ($this->httpLogEnabled && Yii::$app->has('log')) {
+            Yii::getLogger()->log(
+                "Kaspi label request:\n" . $request->toString(),
+                Logger::LEVEL_TRACE,
+                KaspiConstants::LOG_CATEGORY
+            );
+        }
+
+        try {
+            $response = $request->send();
+        } catch (\Exception $e) {
+            throw new KaspiApiException('Kaspi API transport error: ' . $e->getMessage(), 0, $e);
+        }
+
+        if (!$response->isOk) {
+            $body = $response->content;
+            if (strlen($body) > 2000) {
+                $body = substr($body, 0, 2000) . '…';
+            }
+            throw new KaspiApiException(
+                'Kaspi API HTTP ' . $response->statusCode,
+                (int) $response->statusCode,
+                null,
+                (int) $response->statusCode,
+                $body
+            );
+        }
+
+        $mime = (string) $response->headers->get('Content-Type');
+        if ($mime === '') {
+            $mime = 'application/pdf';
+        }
+
+        return [
+            'mime' => $mime,
+            'body' => (string) $response->content,
+        ];
     }
 
     // Замыкание для запросов с ответом или ошибкой

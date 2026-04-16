@@ -5,7 +5,7 @@ use yii\helpers\Url;
 
 /* @var $this yii\web\View */
 /* @var $form yii\widgets\ActiveForm */
-/* @var $inboundForm stockDepartment\modules\intermode\controllers\ecommerce\inbound\domain\InboundForm */
+/* @var $inboundForm stockDepartment\modules\alix\controllers\ecommerce\inbound\domain\InboundForm */
 
 $this->title = Yii::t('inbound/titles', 'Создать возврат');
 ?>
@@ -14,7 +14,7 @@ $this->title = Yii::t('inbound/titles', 'Создать возврат');
 <?php $form = ActiveForm::begin([
     'id' => 'scanning-returns',
     'method' => 'post',
-    'action' => Url::to(['/intermode/ecommerce/inbound/returns/scanning/create-new-order']),
+    'action' => Url::to(['/alix/ecommerce/inbound/returns/scanning/create-new-order']),
 ]); ?>
 
 <?= $form->field($inboundForm, 'order_number')

@@ -1,6 +1,6 @@
 <?php
 
-namespace stockDepartment\modules\intermode\controllers\common\apilogs\dto;
+namespace stockDepartment\modules\alix\controllers\common\apilogs\dto;
 
 /**
  * This is the model class for table "AddResponse".

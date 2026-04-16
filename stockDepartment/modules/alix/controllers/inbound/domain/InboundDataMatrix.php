@@ -1,6 +1,6 @@
 <?php
 
-namespace stockDepartment\modules\intermode\controllers\inbound\domain;
+namespace stockDepartment\modules\alix\controllers\inbound\domain;
 
 use Yii;
 

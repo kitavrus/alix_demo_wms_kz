@@ -3,7 +3,7 @@ use yii\helpers\Html;
 use yii\widgets\ActiveForm;
 use kartik\daterange\DateRangePicker;
 use kartik\select2\Select2;
-use stockDepartment\modules\intermode\controllers\ecommerce\outbound\domain\constants\OutboundStatus;
+use stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\constants\OutboundStatus;
 
 /* @var $this yii\web\View */
 /* @var $model common\ecommerce\entities\EcommerceOutboundSearch */

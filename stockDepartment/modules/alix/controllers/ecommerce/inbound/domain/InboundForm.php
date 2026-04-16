@@ -4,7 +4,7 @@ namespace stockDepartment\modules\intermode\controllers\ecommerce\inbound\domain
 use Yii;
 use yii\base\Model;
 use common\components\BarcodeManager;
-use common\modules\stock\models\Stock;
+use common\ecommerce\entities\EcommerceStock;
 use common\modules\inbound\models\InboundOrder;
 use common\modules\inbound\models\InboundOrderItem;
 use common\clientObject\main\inbound\validation\InboundOrderValidation;
@@ -82,18 +82,18 @@ class InboundForm extends Model
         }
 
         $inbound_order_id = $this->order_number;
-        $count = Stock::find()
+        $count = EcommerceStock::find()
             ->andWhere([
-                'primary_address' => $value,
+                'box_address_barcode' => $value,
                 'status' => [
-                    Stock::STATUS_INBOUND_SCANNING,
-                    Stock::STATUS_INBOUND_SCANNED,
-                    Stock::STATUS_INBOUND_OVER_SCANNED
+                    EcommerceStock::STATUS_INBOUND_SCANNING,
+                    EcommerceStock::STATUS_INBOUND_SCANNED,
+                    EcommerceStock::STATUS_INBOUND_OVER_SCANNED
                 ]
             ])
             ->andWhere(
-                'inbound_order_id != :inbound_order_id',
-                [':inbound_order_id' => $inbound_order_id]
+                'inbound_id != :inbound_id',
+                [':inbound_id' => $inbound_order_id]
             )->exists();
 
         if ($count) {
@@ -106,15 +106,15 @@ class InboundForm extends Model
             );
         }
 
-        $count = Stock::find()
+        $count = EcommerceStock::find()
             ->andWhere(
                 [
-                    'primary_address' => $value,
+                    'box_address_barcode' => $value,
                 ]
             )
             ->andWhere(
-                'inbound_order_id != :inbound_order_id AND secondary_address != ""',
-                [':inbound_order_id' => $inbound_order_id]
+                'inbound_id != :inbound_id AND place_address_barcode != ""',
+                [':inbound_id' => $inbound_order_id]
             )->exists();
 
         if ($count) {
@@ -152,7 +152,7 @@ class InboundForm extends Model
             InboundOrder::find()
                 ->andWhere(
                     [
-                        'status' => Stock::STATUS_INBOUND_COMPLETE,
+                        'status' => EcommerceStock::STATUS_INBOUND_COMPLETE,
                         'id' => $this->order_number
                     ]
                 )->exists()
@@ -189,7 +189,7 @@ class InboundForm extends Model
             InboundOrder::find()
                 ->andWhere(
                     [
-                        'status' => Stock::STATUS_INBOUND_COMPLETE,
+                        'status' => EcommerceStock::STATUS_INBOUND_COMPLETE,
                         'id' => $this->order_number
                     ]
                 )
@@ -229,12 +229,12 @@ class InboundForm extends Model
      * */
     public function checkProductInBox($productBarcode, $box_barcode)
     {
-        return Stock::find()
+        return EcommerceStock::find()
             ->where(
                 [
-                    'box_barcode' => $box_barcode,
+                    'box_address_barcode' => $box_barcode,
                     'product_barcode' => $productBarcode,
-                    'status' => Stock::STATUS_OUTBOUND_SCANNED
+                    'status' => EcommerceStock::STATUS_OUTBOUND_SCANNED
                 ]
             )
             ->exists();

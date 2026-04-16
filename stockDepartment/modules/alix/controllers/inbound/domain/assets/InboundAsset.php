@@ -1,6 +1,6 @@
 <?php
 
-namespace stockDepartment\modules\intermode\controllers\inbound\domain\assets;
+namespace stockDepartment\modules\alix\controllers\inbound\domain\assets;
 
 use yii\web\AssetBundle;
 
