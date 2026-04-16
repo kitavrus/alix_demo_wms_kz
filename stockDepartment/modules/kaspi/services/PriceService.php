@@ -3,6 +3,7 @@
 namespace stockDepartment\modules\kaspi\services;
 
 use stockDepartment\modules\kaspi\models\KaspiPriceHistory;
+use stockDepartment\modules\kaspi\models\ProductV2;
 use stockDepartment\modules\kaspi\dto\PriceUpdateRequestDto;
 use Yii;
 use yii\base\Component;
@@ -55,43 +56,21 @@ class PriceService extends Component
             ? (int) Yii::$app->user->id
             : null;
 
+        // Собираем все GUID из батча и загружаем артикулы одним запросом
+        $allGuids = array_map(function ($dto) { return $dto->product_guid; }, $dtos);
+        $articleMap = ProductV2::find()
+            ->select(['article', 'guid'])
+            ->andWhere(['in', 'guid', $allGuids])
+            ->indexBy('guid')
+            ->column();
+
         foreach ($dtos as $dto) {
             $effectiveFrom = $dto->getEffectiveFromTimestamp();
-
-            // Ищем существующую запись по товару + типу цены + дате активации
-            $existing = KaspiPriceHistory::find()
-                ->andWhere([
-                    'product_guid'   => $dto->product_guid,
-                    'price_type'     => $dto->price_type,
-                    'effective_from' => $effectiveFrom,
-                ])
-                ->andWhere(['in', 'push_status', [
-                    KaspiPriceHistory::PUSH_STATUS_PENDING,
-                    KaspiPriceHistory::PUSH_STATUS_SENT,
-                ]])
-                ->one();
-
-            if ($existing) {
-                // Обновляем цену и заметку, если изменились
-                $existing->price = (float) $dto->price;
-                $existing->note  = $dto->note;
-                $existing->save(false);
-
-                $savedIds[] = $existing->id;
-                if ($dto->isImmediatelyEffective()) {
-                    $immediate[] = $existing;
-                } else {
-                    $scheduled[] = [
-                        'price_history_id' => $existing->id,
-                        'product_guid'     => $dto->product_guid,
-                        'effective_from'   => $dto->effective_from,
-                    ];
-                }
-                continue;
-            }
+            $article = isset($articleMap[$dto->product_guid]) ? $articleMap[$dto->product_guid] : null;
 
             $record = new KaspiPriceHistory();
             $record->product_guid    = $dto->product_guid;
+            $record->article         = $article;
             $record->price           = (float) $dto->price;
             $record->price_type      = $dto->price_type;
             $record->note            = $dto->note;

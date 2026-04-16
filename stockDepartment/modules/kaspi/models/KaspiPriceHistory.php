@@ -12,7 +12,8 @@ use yii\db\ActiveRecord;
  * в нашей таблице нет updated_at, updated_user_id и deleted.
  *
  * @property int    $id
- * @property string $product_guid    GUID / SKU товара на Kaspi
+ * @property string $product_guid    GUID товара из product_v2
+ * @property string $article         Артикул товара из product_v2
  * @property float  $price           Цена в KZT (целое число в тенге)
  * @property string $price_type      Тип цены (BASE, SALE, PROMO и т.п.)
  * @property string $note            Произвольная заметка
@@ -42,6 +43,7 @@ class KaspiPriceHistory extends ActiveRecord
             [['price'], 'number', 'min' => 0],
             [['effective_from', 'push_at', 'created_at', 'created_user_id'], 'integer'],
             [['product_guid'], 'string', 'max' => 128],
+            [['article'], 'string', 'max' => 32],
             [['price_type'], 'string', 'max' => 64],
             [['push_status'], 'string', 'max' => 16],
             [['note', 'push_response'], 'string'],
@@ -53,7 +55,8 @@ class KaspiPriceHistory extends ActiveRecord
     {
         return [
             'id'              => 'ID',
-            'product_guid'    => 'GUID товара (Kaspi SKU)',
+            'product_guid'    => 'GUID товара',
+            'article'         => 'Артикул',
             'price'           => 'Цена (KZT)',
             'price_type'      => 'Тип цены',
             'note'            => 'Заметка',
