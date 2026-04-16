@@ -5,6 +5,7 @@ namespace stockDepartment\modules\kaspi\services;
 use common\ecommerce\entities\EcommerceStock;
 use stockDepartment\modules\kaspi\models\KaspiPriceHistory;
 use stockDepartment\modules\kaspi\models\KaspiStockHistory;
+use stockDepartment\modules\kaspi\models\ProductV2;
 use Yii;
 use yii\base\Component;
 use yii\helpers\BaseFileHelper;
@@ -86,18 +87,34 @@ class PriceListService extends Component
             return [];
         }
 
-        $allSkus = array_column($stockRows, 'product_sku');
-        $historyPrices = $this->getLatestActivePrices($allSkus);
-        $historyQuantities = $this->getLatestActiveQuantities($allSkus);
+        $allGuids = array_column($stockRows, 'product_sku');
+        $historyPrices = $this->getLatestActivePrices($allGuids);
+        $historyQuantities = $this->getLatestActiveQuantities($allGuids);
+
+        // Маппинг GUID → article из product_v2 для колонки SKU в Excel
+        $guidToArticle = ProductV2::find()
+            ->select(['guid', 'article'])
+            ->andWhere(['in', 'guid', $allGuids])
+            ->asArray()
+            ->all();
+        $articleMap = [];
+        foreach ($guidToArticle as $row) {
+            $articleMap[$row['guid']] = (string) $row['article'];
+        }
 
         $result = [];
         foreach ($stockRows as $row) {
-            $sku = (string) $row['product_sku'];
+            $guid = (string) $row['product_sku'];
+
+            // SKU в Excel = артикул из product_v2, fallback на GUID
+            $sku = isset($articleMap[$guid]) && $articleMap[$guid] !== ''
+                ? $articleMap[$guid]
+                : $guid;
 
             // Цена из истории имеет приоритет над product_price из стока.
             // Если цены нет нигде — ставим 0 (товар попадёт в файл, цену зададут позже).
-            if (isset($historyPrices[$sku])) {
-                $price = (float) $historyPrices[$sku];
+            if (isset($historyPrices[$guid])) {
+                $price = (float) $historyPrices[$guid];
             } elseif (!empty($row['product_price']) && (float) $row['product_price'] > 0) {
                 $price = (float) $row['product_price'];
             } else {
@@ -105,8 +122,8 @@ class PriceListService extends Component
             }
 
             // Остаток: override из kaspi_stock_history имеет приоритет над COUNT(*)
-            if (array_key_exists($sku, $historyQuantities)) {
-                $qty = (int) $historyQuantities[$sku];
+            if (array_key_exists($guid, $historyQuantities)) {
+                $qty = (int) $historyQuantities[$guid];
             } else {
                 $qty = (int) $row['qty'];
             }
