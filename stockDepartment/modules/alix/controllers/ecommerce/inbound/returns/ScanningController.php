@@ -8,7 +8,7 @@ use yii\helpers\VarDumper;
 use yii\widgets\ActiveForm;
 use yii\helpers\ArrayHelper;
 use common\models\ActiveRecord;
-use common\modules\stock\models\Stock;
+use common\ecommerce\entities\EcommerceStock;
 use common\modules\client\models\Client;
 use stockDepartment\components\Controller;
 use common\modules\inbound\models\InboundOrder;
@@ -176,17 +176,17 @@ class ScanningController extends Controller
         $model->scenario = 'ClearBox';
 
         if ($model->load(Yii::$app->request->post()) && $model->validate()) {
-			$productsInBox = Stock::find()
+			$productsInBox = EcommerceStock::find()
 								  ->select(
 									  'count(product_barcode) as product_barcode_count, product_barcode'
 								  )
 								  ->andWhere(
 									  [
-										  'primary_address' => $model->box_barcode,
-										  'inbound_order_id' => $model->order_number,
+										  'box_address_barcode' => $model->box_barcode,
+										  'inbound_id' => $model->order_number,
 										  'status' => [
-											  Stock::STATUS_INBOUND_SCANNED,
-											  Stock::STATUS_INBOUND_OVER_SCANNED
+											  EcommerceStock::STATUS_INBOUND_SCANNED,
+											  EcommerceStock::STATUS_INBOUND_OVER_SCANNED
 										  ]
 									  ]
 								  )
@@ -204,24 +204,24 @@ class ScanningController extends Controller
 
                     if ($ioi) {
 
-                        Stock::deleteAll(
+                        EcommerceStock::deleteAll(
                             [
-                                'primary_address' => $model->box_barcode,
-                                'inbound_order_id' => $model->order_number,
+                                'box_address_barcode' => $model->box_barcode,
+                                'inbound_id' => $model->order_number,
                                 'product_barcode' => $item->product_barcode,
                                 'status' => [
-                                    Stock::STATUS_INBOUND_SCANNED,
-                                    Stock::STATUS_INBOUND_OVER_SCANNED
+                                    EcommerceStock::STATUS_INBOUND_SCANNED,
+                                    EcommerceStock::STATUS_INBOUND_OVER_SCANNED
                                 ]
                             ]
                         );
 
-                        $countStockForItem = Stock::find()
+                        $countStockForItem = EcommerceStock::find()
                             ->andWhere(
                                 [
-                                    'inbound_order_id' => $model->order_number,
+                                    'inbound_id' => $model->order_number,
                                     'product_barcode' => $item->product_barcode,
-                                    'status' => Stock::STATUS_INBOUND_SCANNED,
+                                    'status' => EcommerceStock::STATUS_INBOUND_SCANNED,
                                 ]
                             )
                             ->count();
@@ -232,18 +232,18 @@ class ScanningController extends Controller
                     }
                 }
 
-                $countStockForOrder = Stock::find()
+                $countStockForOrder = EcommerceStock::find()
                     ->andWhere(
                         [
-                            'inbound_order_id' => $model->order_number,
-                            'status' => Stock::STATUS_INBOUND_SCANNED,
+                            'inbound_id' => $model->order_number,
+                            'status' => EcommerceStock::STATUS_INBOUND_SCANNED,
                         ]
                     )
                     ->count();
 
 
                 if ($inbound = InboundOrder::findOne($model->order_number)) {
-                    $inbound->status = Stock::STATUS_INBOUND_SCANNING;
+                    $inbound->status = EcommerceStock::STATUS_INBOUND_SCANNING;
                     $inbound->expected_qty = $countStockForOrder;
                     $inbound->accepted_qty = $countStockForOrder;
                     $inbound->save(false);
@@ -317,16 +317,16 @@ class ScanningController extends Controller
         $io = InboundOrder::findOne($orderNumber);
         $io->expected_qty += 1;
         $io->accepted_qty += 1;
-        $io->status = Stock::STATUS_INBOUND_SCANNING;
+        $io->status = EcommerceStock::STATUS_INBOUND_SCANNING;
         $io->save(false);
 
-        $stock = new Stock();
+        $stock = new EcommerceStock();
         $stock->client_id = $clientId;
-        $stock->primary_address = $boxBarcode;
-        $stock->inbound_order_id = $orderNumber;
-        $stock->inbound_order_item_id = $ioi->id;
+        $stock->box_address_barcode = $boxBarcode;
+        $stock->inbound_id = $orderNumber;
+        $stock->inbound_item_id = $ioi->id;
         $stock->product_barcode = $productBarcode;
-        $stock->status = Stock::STATUS_INBOUND_SCANNED;
+        $stock->status = EcommerceStock::STATUS_INBOUND_SCANNED;
         $stock->save(false);
 
 		$items = $io->getOrderItems()->orderBy([
@@ -372,24 +372,24 @@ class ScanningController extends Controller
         $model->scenario = 'ClearProductInBox';
 
         if ($model->load(Yii::$app->request->post()) && $model->validate()) {
-            Stock::deleteAll(
+            EcommerceStock::deleteAll(
                 [
-                    'primary_address' => $model->box_barcode,
+                    'box_address_barcode' => $model->box_barcode,
                     'product_barcode' => $model->product_barcode,
-                    'inbound_order_id' => $model->order_number,
+                    'inbound_id' => $model->order_number,
                     'status' => [
-                        Stock::STATUS_INBOUND_SCANNED,
-                        Stock::STATUS_INBOUND_OVER_SCANNED
+                        EcommerceStock::STATUS_INBOUND_SCANNED,
+                        EcommerceStock::STATUS_INBOUND_OVER_SCANNED
                     ]
                 ]
             );
 
-            $countStockForItem = Stock::find()
+            $countStockForItem = EcommerceStock::find()
                 ->andWhere(
                     [
-                        'inbound_order_id' => $model->order_number,
+                        'inbound_id' => $model->order_number,
                         'product_barcode' => $model->product_barcode,
-                        'status' => Stock::STATUS_INBOUND_SCANNED,
+                        'status' => EcommerceStock::STATUS_INBOUND_SCANNED,
                     ]
                 )
                 ->count();
@@ -403,7 +403,7 @@ class ScanningController extends Controller
                 )
             ) {
                 $ioi->accepted_qty = $countStockForItem;
-                $ioi->status = Stock::STATUS_INBOUND_SCANNING;
+                $ioi->status = EcommerceStock::STATUS_INBOUND_SCANNING;
                 $ioi->save(false);
 
                 $colorRowClass = 'alert-danger';
@@ -418,17 +418,17 @@ class ScanningController extends Controller
             }
             ;
 
-            $countStockForOrder = Stock::find()
+            $countStockForOrder = EcommerceStock::find()
                 ->andWhere(
                     [
-                        'inbound_order_id' => $model->order_number,
-                        'status' => Stock::STATUS_INBOUND_SCANNED,
+                        'inbound_id' => $model->order_number,
+                        'status' => EcommerceStock::STATUS_INBOUND_SCANNED,
                     ]
                 )
                 ->count();
 
             if ($inbound = InboundOrder::findOne($model->order_number)) {
-                $inbound->status = Stock::STATUS_INBOUND_SCANNING;
+                $inbound->status = EcommerceStock::STATUS_INBOUND_SCANNING;
                 $inbound->accepted_qty = $countStockForOrder;
                 $inbound->save(false);
 
@@ -490,20 +490,20 @@ class ScanningController extends Controller
 
         $items = [];
         if ($io = InboundOrder::findOne($id)) {
-            $items = Stock::find()
-                ->select('primary_address, secondary_address')
+            $items = EcommerceStock::find()
+                ->select('box_address_barcode AS primary_address, place_address_barcode AS secondary_address')
                 ->andWhere([
-                    'inbound_order_id' => $io->id,
-                    'secondary_address' => '',
+                    'inbound_id' => $io->id,
+                    'place_address_barcode' => '',
                 ])
                 ->andWhere([
                     'not',
-                    ['primary_address' => '']
+                    ['box_address_barcode' => '']
                 ])
-                ->groupBy('primary_address')
+                ->groupBy('box_address_barcode')
                 ->orderBy([
-                    'secondary_address' => SORT_DESC,
-                    'primary_address' => SORT_DESC,
+                    'place_address_barcode' => SORT_DESC,
+                    'box_address_barcode' => SORT_DESC,
                 ])
                 ->asArray()
                 ->all();
@@ -532,30 +532,30 @@ class ScanningController extends Controller
 
         if ($model->load(Yii::$app->request->post()) && $model->validate()) {
             if ($io = InboundOrder::findOne($model->order_number)) {
-                if ($io->status == Stock::STATUS_INBOUND_CONFIRM) {
+                if ($io->status == EcommerceStock::STATUS_INBOUND_CONFIRM) {
                     $messages[] = Yii::t(
                         'inbound/errors',
                         'Накладная с номером ' . $io->order_number . ' уже принята'
                     );
                 } else {
-                    $io->status = Stock::STATUS_INBOUND_CONFIRM;
+                    $io->status = EcommerceStock::STATUS_INBOUND_CONFIRM;
                     $io->save(false);
 
-                    Stock::updateAll(
+                    EcommerceStock::updateAll(
                         [
-                            'status' => Stock::STATUS_INBOUND_CONFIRM,
-                            'status_availability' => Stock::STATUS_AVAILABILITY_YES,
+                            'status' => EcommerceStock::STATUS_INBOUND_CONFIRM,
+                            'status_availability' => EcommerceStock::STATUS_AVAILABILITY_YES,
                         ],
                         [
-                            'inbound_order_id' => $io->id,
+                            'inbound_id' => $io->id,
                             'status' => [
-                                Stock::STATUS_INBOUND_SCANNED,
-                                Stock::STATUS_INBOUND_OVER_SCANNED,
+                                EcommerceStock::STATUS_INBOUND_SCANNED,
+                                EcommerceStock::STATUS_INBOUND_OVER_SCANNED,
                             ]
                         ]
                     );
 
-                    Stock::deleteAll('inbound_order_id = :inbound_order_id AND status != :status', [':inbound_order_id' => $io->id, ':status' => Stock::STATUS_INBOUND_CONFIRM]);
+                    EcommerceStock::deleteAll('inbound_id = :inbound_id AND status != :status', [':inbound_id' => $io->id, ':status' => EcommerceStock::STATUS_INBOUND_CONFIRM]);
 
                     $messages[] = Yii::t(
                         'inbound/errors',

@@ -6,6 +6,7 @@ use stockDepartment\components\Controller;
 use stockDepartment\modules\kaspi\kaspi as KaspiModule;
 use stockDepartment\modules\kaspi\services\KaspiService;
 use stockDepartment\modules\kaspi\services\PriceListService;
+use stockDepartment\modules\kaspi\services\ProductSyncService;
 use Yii;
 use yii\filters\AccessControl;
 use yii\filters\VerbFilter;
@@ -81,6 +82,7 @@ class KaspiController extends Controller
                 'cancel-return-to-stock' => ['POST'],
                 'partial-return' => ['POST'],
                 'confirm-return-completed' => ['POST'],
+                'alix-sync-items' => ['POST', 'GET'],
             ],
         ];
 
@@ -370,5 +372,43 @@ class KaspiController extends Controller
     {
         Yii::$app->response->format = Response::FORMAT_JSON;
         return $this->kaspiService->confirmReturnCompleted((string) $orderId);
+    }
+
+    // MARK: - Alix 1C items sync (ручной триггер крона)
+
+    /**
+     * Вручную запустить синхронизацию номенклатуры из Alix 1C
+     * в product_v2 / product_barcodes_v2.
+     *
+     * Тот же процесс, что и cron `cron/alix-sync-items`, но через HTTP.
+     *
+     * POST /kaspi/api/v1/alix-sync-items
+     *   (GET тоже разрешён для удобной отладки из браузера)
+     *
+     * Ответ (JSON):
+     * {
+     *   "status": "OK" | "PARTIAL" | "ERROR",
+     *   "fetched": 1234,
+     *   "created": 10,
+     *   "updated": 1224,
+     *   "barcodes_added": 15,
+     *   "errors": 0,
+     *   "message": "..."   // только при ERROR/PARTIAL
+     * }
+     */
+    public function actionAlixSyncItems()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        /** @var ProductSyncService $service */
+        $service = $this->module->get('productSyncService');
+
+        $result = $service->syncFromApi();
+
+        if (isset($result['status']) && $result['status'] === 'ERROR') {
+            Yii::$app->response->statusCode = 502;
+        }
+
+        return $result;
     }
 }

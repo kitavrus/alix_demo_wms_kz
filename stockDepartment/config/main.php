@@ -265,6 +265,11 @@ return [
 					'route'   => "kaspi/api/v1/kaspi/confirm-return-completed",
 					'verb'    => 'POST'
 				],
+				[
+					'pattern' => "kaspi/api/v1/alix-sync-items",
+					'route'   => "kaspi/api/v1/kaspi/alix-sync-items",
+					'verb'    => ['POST', 'GET']
+				],
             ]
         ],
         'view' => [

@@ -52,8 +52,8 @@ class InboundRepository
 			$inboundOrderItem->product_sku = $item->guid;
 			$inboundOrderItem->product_id = $p->product->id;
 			$inboundOrderItem->product_name = $p->product->name;
-			$inboundOrderItem->product_brand = $p->product->field_extra1;
-			$inboundOrderItem->product_color = $p->product->color;
+			$inboundOrderItem->product_brand = $p->product->brand;
+			$inboundOrderItem->product_color = $p->product->color_name;
 			$inboundOrderItem->save(false);
 
 			if (count($item->datamatrix) != 0) {

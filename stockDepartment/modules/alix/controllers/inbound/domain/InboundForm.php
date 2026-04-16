@@ -5,9 +5,9 @@ namespace stockDepartment\modules\alix\controllers\inbound\domain;
 use stockDepartment\modules\alix\controllers\inbound\domain\InboundOrderValidation;
 use common\components\BarcodeManager;
 use common\ecommerce\defacto\barcodeManager\service\BarcodeService;
+use common\ecommerce\entities\EcommerceStock;
 use common\modules\inbound\models\InboundOrder;
 use common\modules\inbound\models\InboundOrderItem;
-use common\modules\stock\models\Stock;
 use yii\base\Model;
 use Yii;
 
@@ -88,29 +88,29 @@ class InboundForm extends Model {
 		}
 
 		$inbound_order_id = $this->order_number;
-		$count =  Stock::find()
-					   ->andWhere(['primary_address'=>$value,
+		$count =  EcommerceStock::find()
+					   ->andWhere(['box_address_barcode'=>$value,
 						   'status'=>[
-							   Stock::STATUS_INBOUND_SCANNING,
-							   Stock::STATUS_INBOUND_SCANNED,
-							   Stock::STATUS_INBOUND_OVER_SCANNED
+							   EcommerceStock::STATUS_INBOUND_SCANNING,
+							   EcommerceStock::STATUS_INBOUND_SCANNED,
+							   EcommerceStock::STATUS_INBOUND_OVER_SCANNED
 						   ]
 					   ])
-					   ->andWhere('inbound_order_id != :inbound_order_id',[':inbound_order_id'=>$inbound_order_id])->exists();
+					   ->andWhere('inbound_id != :inbound_id',[':inbound_id'=>$inbound_order_id])->exists();
 
 		if($count) {
 			$this->addError($attribute, '<b>['.$value.']</b> '.Yii::t('inbound/errors','В этом коробе есть товары из другого заказа'));
 		}
 
-		$count =  Stock::find()
-					   ->andWhere(['primary_address'=>$value,
+		$count =  EcommerceStock::find()
+					   ->andWhere(['box_address_barcode'=>$value,
 //                        'status'=>[
-//                                    Stock::STATUS_INBOUND_SCANNING,
-//                                    Stock::STATUS_INBOUND_SCANNED,
-//                                    Stock::STATUS_INBOUND_OVER_SCANNED
+//                                    EcommerceStock::STATUS_INBOUND_SCANNING,
+//                                    EcommerceStock::STATUS_INBOUND_SCANNED,
+//                                    EcommerceStock::STATUS_INBOUND_OVER_SCANNED
 //                        ]
 					   ])
-					   ->andWhere('inbound_order_id != :inbound_order_id AND secondary_address != ""',[':inbound_order_id'=>$inbound_order_id])->exists();
+					   ->andWhere('inbound_id != :inbound_id AND place_address_barcode != ""',[':inbound_id'=>$inbound_order_id])->exists();
 
 		if($count) {
 			$this->addError($attribute, '<b>['.$value.']</b> '.Yii::t('inbound/errors','В этом коробе есть товары из другого заказа и он уже размещен'));
@@ -156,7 +156,7 @@ class InboundForm extends Model {
 //                $this->addError($attribute, '<b> [ ' . $value . ' ] </b> '.Yii::t('inbound/errors','This product already assigned to outbound order')); // Этот товар уже привязан к outbound order
 //            }
 //        }
-		if(InboundOrder::find()->andWhere(['status'=>Stock::STATUS_INBOUND_COMPLETE,'id'=> $orderNumberId])->exists()) {
+		if(InboundOrder::find()->andWhere(['status'=>EcommerceStock::STATUS_INBOUND_COMPLETE,'id'=> $orderNumberId])->exists()) {
 			$this->addError($attribute, '<b> [ ' . $productBarcode . ' ] </b> '.Yii::t('inbound/errors','This order is complete'));
 		}
 
@@ -178,7 +178,7 @@ class InboundForm extends Model {
 //            $this->addError($attribute, '<b> [ ' . $value . ' ] </b> '.Yii::t('inbound/errors','Box is empty')); // Этого товара нет в укзанном коробе
 //        }
 
-		if(InboundOrder::find()->andWhere(['status'=>Stock::STATUS_INBOUND_COMPLETE,'id'=> $this->order_number])->exists()) {
+		if(InboundOrder::find()->andWhere(['status'=>EcommerceStock::STATUS_INBOUND_COMPLETE,'id'=> $this->order_number])->exists()) {
 			$this->addError($attribute, '<b> [ ' . $value . ' ] </b> '.Yii::t('inbound/errors','This order is complete'));
 		}
 
@@ -215,7 +215,7 @@ class InboundForm extends Model {
 	* */
 	public function checkProductInBox($productBarcode,$box_barcode)
 	{
-		return Stock::find()->andWhere(['primary_address'=>$box_barcode,'product_barcode'=>$productBarcode,'status'=>[Stock::STATUS_INBOUND_SCANNED,Stock::STATUS_INBOUND_OVER_SCANNED]])->exists();
+		return EcommerceStock::find()->andWhere(['box_address_barcode'=>$box_barcode,'product_barcode'=>$productBarcode,'status'=>[EcommerceStock::STATUS_INBOUND_SCANNED,EcommerceStock::STATUS_INBOUND_OVER_SCANNED]])->exists();
 //        return InboundOrderItemProcess::find()->where(['box_barcode'=>$box_barcode,'product_barcode'=>$productBarcode])->exists();
 	}
 
@@ -261,40 +261,39 @@ class InboundForm extends Model {
 
 	/**
 	* Находим отсканированный шк в заказе и ставим статус отсканирован
-	 * @return Stock
+	 * @return EcommerceStock
 	* */
 	public function setScannedStatus()
 	{
-		$stock = Stock::find()->andWhere([
-			'inbound_order_id' => $this->order_number,
+		$stock = EcommerceStock::find()->andWhere([
+			'inbound_id' => $this->order_number,
 			'product_barcode' => $this->product_barcode,
 //			'inbound_client_box' => $this->client_box_barcode,
 			'status' => [
-				Stock::STATUS_INBOUND_NEW,
-				Stock::STATUS_INBOUND_SCANNING,
+				EcommerceStock::STATUS_INBOUND_NEW,
+				EcommerceStock::STATUS_INBOUND_SCANNING,
 			],
 			'client_id' => $this->client_id,
 		])->one();
 
 		if($stock) {
-			$stock->status = Stock::STATUS_INBOUND_SCANNED;
-			$stock->primary_address = $this->box_barcode;
-			$stock->status_availability  = Stock::STATUS_AVAILABILITY_NOT_SET;
+			$stock->status = EcommerceStock::STATUS_INBOUND_SCANNED;
+			$stock->box_address_barcode = $this->box_barcode;
+			$stock->status_availability  = EcommerceStock::STATUS_AVAILABILITY_NOT_SET;
 			$stock->scan_in_datetime = time();
 			$stock->save(false);
 		} else {
-			$stock = new Stock();
+			$stock = new EcommerceStock();
 			$attributes = [
 				'scan_in_datetime'=>time(),
 				'client_id'=>$this->client_id,
-				'inbound_order_id'=>$this->order_number,
+				'inbound_id'=>$this->order_number,
 				'product_barcode'=>$this->product_barcode,
-				'primary_address'=>$this->box_barcode,
+				'box_address_barcode'=>$this->box_barcode,
 				//'inbound_client_box'=>$this->client_box_barcode,
-				'status'=>Stock::STATUS_INBOUND_SCANNED,
-				'status_availability'=>Stock::STATUS_AVAILABILITY_NOT_SET,
-				'system_status'=>$this->client_id.'-'.'OVER-SCAN',
-				'system_status_description'=>'Это товар которога не должно быть в этом коробе. Но по факту он есть',
+				'status'=>EcommerceStock::STATUS_INBOUND_SCANNED,
+				'status_availability'=>EcommerceStock::STATUS_AVAILABILITY_NOT_SET,
+				'system_message'=>$this->client_id.'-OVER-SCAN: Это товар которого не должно быть в этом коробе. Но по факту он есть',
 			];
 			$stock->setAttributes($attributes,false);
 			$stock->save(false);
@@ -317,7 +316,7 @@ class InboundForm extends Model {
 				$inboundItemOne->save(false);
 			}
 
-			$stock->inbound_order_item_id = $inboundItemOne->id;
+			$stock->inbound_item_id = $inboundItemOne->id;
 			$stock->product_sku = $inboundItemOne->product_sku;
 			$stock->product_id = $inboundItemOne->product_id;
 			$stock->product_name = $inboundItemOne->product_name;

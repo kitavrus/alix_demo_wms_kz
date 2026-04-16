@@ -58,14 +58,18 @@ class InboundController extends Controller
     }
 	
 	private function notifyByTg($orderId) {
-		$is = new InboundService();
-		$order = $is->getOrderByID($orderId);
-		if (empty($order)) {
-			return;
+		try {
+			$is = new InboundService();
+			$order = $is->getOrderByID($orderId);
+			if (empty($order)) {
+				return;
+			}
+			TelegramalixB2BNotification::sendMessageIfNewInboundOrder(
+				new NewInboundOrderMsgDTO($order->order_number,$order->expected_qty,$order->comments)
+			);
+		} catch (\Throwable $e) {
+			Yii::error('Telegram notify failed: ' . $e->getMessage(), __METHOD__);
 		}
-		TelegramalixB2BNotification::sendMessageIfNewInboundOrder(
-			new NewInboundOrderMsgDTO($order->order_number,$order->expected_qty,$order->comments)
-		);
 	}
 
 	public function actionReturns()

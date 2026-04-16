@@ -2,9 +2,9 @@
 
 namespace stockDepartment\modules\intermode\controllers\ecommerce\inbound\domain;
 
+use common\ecommerce\entities\EcommerceStock;
 use common\modules\inbound\models\InboundOrder;
 use common\modules\inbound\models\InboundOrderItem;
-use common\modules\stock\models\Stock;
 use common\modules\stock\service\Service;
 use yii\db\Expression;
 
@@ -33,13 +33,13 @@ class InboundRepository
 	* */
 	public function getScannedProductInBox($boxBarcode,$inbound_order_id)
 	{
-		return (int)Stock::find()->where([
-			'inbound_order_id'=>$inbound_order_id,
-			'primary_address' => $boxBarcode,
+		return (int)EcommerceStock::find()->where([
+			'inbound_id'=>$inbound_order_id,
+			'box_address_barcode' => $boxBarcode,
 			'status'=>
 				[
-					Stock::STATUS_INBOUND_SCANNED,
-					Stock::STATUS_INBOUND_OVER_SCANNED,
+					EcommerceStock::STATUS_INBOUND_SCANNED,
+					EcommerceStock::STATUS_INBOUND_OVER_SCANNED,
 				]])->count();
 
 	}
@@ -82,7 +82,7 @@ class InboundRepository
         $inboundOrder->order_number = $data->orderNumber;
         $inboundOrder->supplier_id = $data->supplierId;
         $inboundOrder->order_type = $this->getOrderType();
-        $inboundOrder->status = Stock::STATUS_INBOUND_NEW;
+        $inboundOrder->status = EcommerceStock::STATUS_INBOUND_NEW;
         $inboundOrder->cargo_status = InboundOrder::CARGO_STATUS_NEW;
         $inboundOrder->expected_qty = $data->expectedTotalProductQty;
         $inboundOrder->accepted_qty = 0;
@@ -136,7 +136,7 @@ class InboundRepository
     {
         return InboundOrder::find()
             ->andWhere(['client_id' => $this->getClientID()])
-            ->andWhere('status != :status', [':status' => Stock::STATUS_INBOUND_COMPLETE])
+            ->andWhere('status != :status', [':status' => EcommerceStock::STATUS_INBOUND_COMPLETE])
             ->asArray()
             ->all();
     }
@@ -177,19 +177,19 @@ class InboundRepository
     //
     public function addScannedProductToStock($dto)
     {
-        $stock = new Stock();
+        $stock = new EcommerceStock();
         $stock->client_id = $this->getClientID();
-        $stock->inbound_order_id = $dto->orderNumberId;
+        $stock->inbound_id = $dto->orderNumberId;
         $stock->product_barcode = $dto->productBarcode;
         $stock->product_model = $dto->productModel;
-        $stock->primary_address = $dto->transportedBoxBarcode;
-        $stock->status = Stock::STATUS_INBOUND_SCANNED;
-        $stock->status_availability = Stock::STATUS_AVAILABILITY_NO;
+        $stock->box_address_barcode = $dto->transportedBoxBarcode;
+        $stock->status = EcommerceStock::STATUS_INBOUND_SCANNED;
+        $stock->status_availability = EcommerceStock::STATUS_AVAILABILITY_NO;
         $stock->scan_in_datetime = time();
         $stock->save(false);
 
         $inboundItemID = $this->updateAcceptedQtyItemByProductBarcode($dto->orderNumberId, $dto->productBarcode);
-        $stock->inbound_order_item_id = $inboundItemID;
+        $stock->inbound_item_id = $inboundItemID;
         $stock->save(false);
 
         return $stock->id;
@@ -230,20 +230,20 @@ class InboundRepository
     //
     private function getScannedProductQtyByOrderInStock($inboundId, $productBarcode)
     {
-        return Stock::find()->andWhere([
-            'inbound_order_id' => $inboundId,
+        return EcommerceStock::find()->andWhere([
+            'inbound_id' => $inboundId,
             'product_barcode' => $productBarcode,
-            'status' => Stock::STATUS_INBOUND_SCANNED,
+            'status' => EcommerceStock::STATUS_INBOUND_SCANNED,
         ])->count();
     }
 
     //
     private function getScannedProductQtyByModelOrderInStock($inboundId, $productModelBarcode)
     {
-        return Stock::find()->andWhere([
-            'inbound_order_id' => $inboundId,
+        return EcommerceStock::find()->andWhere([
+            'inbound_id' => $inboundId,
             'product_model' => $productModelBarcode,
-            'status' => Stock::STATUS_INBOUND_SCANNED,
+            'status' => EcommerceStock::STATUS_INBOUND_SCANNED,
         ])->count();
     }
 
@@ -262,7 +262,7 @@ class InboundRepository
     {
         $inbound = InboundOrder::find()->andWhere(['id' => $orderId, 'client_id' => $this->getClientID()])->one();
         if ($inbound) {
-            $inbound->status = Stock::STATUS_INBOUND_SCANNING;
+            $inbound->status = EcommerceStock::STATUS_INBOUND_SCANNING;
             $inbound->save(false);
         }
     }
@@ -272,7 +272,7 @@ class InboundRepository
     {
         $inbound = InboundOrder::find()->andWhere(['id' => $orderId, 'client_id' => $this->getClientID()])->one();
         if ($inbound) {
-            $inbound->status = Stock::STATUS_INBOUND_CLOSE;
+            $inbound->status = EcommerceStock::STATUS_INBOUND_CLOSE;
             $inbound->save(false);
         }
     }
@@ -286,7 +286,7 @@ class InboundRepository
         ])->one();
 
         if ($inboundItem) {
-            $inboundItem->status = Stock::STATUS_INBOUND_CLOSE;
+            $inboundItem->status = EcommerceStock::STATUS_INBOUND_CLOSE;
             $inboundItem->save(false);
         }
     }
@@ -310,7 +310,7 @@ class InboundRepository
         ])->one();
 
         if ($inboundItem) {
-            $inboundItem->status = Stock::STATUS_INBOUND_SCANNING;
+            $inboundItem->status = EcommerceStock::STATUS_INBOUND_SCANNING;
             $inboundItem->save(false);
 
         }

@@ -6,8 +6,10 @@
  * Time: 10:54
  */
 namespace console\controllers;
+use stockDepartment\modules\kaspi\services\Alix1CApiService;
 use stockDepartment\modules\kaspi\services\OrderReturnService;
 use stockDepartment\modules\kaspi\services\PriceService;
+use stockDepartment\modules\kaspi\services\ProductSyncService;
 use common\modules\billing\models\TlDeliveryProposalBilling;
 use common\modules\city\models\City;
 use common\modules\city\models\Country;
@@ -432,6 +434,42 @@ class CronController extends Controller
         $status  = isset($result['status']) ? (string) $result['status'] : 'unknown';
 
         echo "Kaspi return polling: status={$status}, fetched={$fetched}, created={$created}, skipped={$skipped}\n";
+
+        return $status === 'OK' ? 0 : 1;
+    }
+
+    /**
+     * Синхронизировать номенклатуру из сервиса Alix 1C
+     * в product_v2 / product_barcodes_v2.
+     *
+     * Источник: GET {alix1cBaseUrl}/items (Basic Auth). Запуск — раз в 30 минут.
+     *
+     * php yii cron/alix-sync-items
+     */
+    public function actionAlixSyncItems()
+    {
+        $api = new Alix1CApiService();
+        $api->init();
+
+        $service = new ProductSyncService(['api' => $api]);
+        $service->init();
+
+        $result = $service->syncFromApi();
+
+        $fetched       = isset($result['fetched']) ? (int) $result['fetched'] : 0;
+        $created       = isset($result['created']) ? (int) $result['created'] : 0;
+        $updated       = isset($result['updated']) ? (int) $result['updated'] : 0;
+        $barcodesAdded = isset($result['barcodes_added']) ? (int) $result['barcodes_added'] : 0;
+        $errors        = isset($result['errors']) ? (int) $result['errors'] : 0;
+        $status        = isset($result['status']) ? (string) $result['status'] : 'UNKNOWN';
+
+        echo "Alix 1C items sync: status={$status}, fetched={$fetched}, "
+            . "created={$created}, updated={$updated}, "
+            . "barcodes_added={$barcodesAdded}, errors={$errors}\n";
+
+        if (!empty($result['message'])) {
+            echo "message: {$result['message']}\n";
+        }
 
         return $status === 'OK' ? 0 : 1;
     }

@@ -56,12 +56,46 @@ class PriceService extends Component
             : null;
 
         foreach ($dtos as $dto) {
+            $effectiveFrom = $dto->getEffectiveFromTimestamp();
+
+            // Ищем существующую запись по товару + типу цены + дате активации
+            $existing = KaspiPriceHistory::find()
+                ->andWhere([
+                    'product_guid'   => $dto->product_guid,
+                    'price_type'     => $dto->price_type,
+                    'effective_from' => $effectiveFrom,
+                ])
+                ->andWhere(['in', 'push_status', [
+                    KaspiPriceHistory::PUSH_STATUS_PENDING,
+                    KaspiPriceHistory::PUSH_STATUS_SENT,
+                ]])
+                ->one();
+
+            if ($existing) {
+                // Обновляем цену и заметку, если изменились
+                $existing->price = (float) $dto->price;
+                $existing->note  = $dto->note;
+                $existing->save(false);
+
+                $savedIds[] = $existing->id;
+                if ($dto->isImmediatelyEffective()) {
+                    $immediate[] = $existing;
+                } else {
+                    $scheduled[] = [
+                        'price_history_id' => $existing->id,
+                        'product_guid'     => $dto->product_guid,
+                        'effective_from'   => $dto->effective_from,
+                    ];
+                }
+                continue;
+            }
+
             $record = new KaspiPriceHistory();
             $record->product_guid    = $dto->product_guid;
             $record->price           = (float) $dto->price;
             $record->price_type      = $dto->price_type;
             $record->note            = $dto->note;
-            $record->effective_from  = $dto->getEffectiveFromTimestamp();
+            $record->effective_from  = $effectiveFrom;
             $record->push_status     = KaspiPriceHistory::PUSH_STATUS_PENDING;
             $record->created_at      = $now;
             $record->created_user_id = $userId;

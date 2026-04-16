@@ -68,7 +68,7 @@ class PriceListService extends Component
             ->select([
                 'product_sku',
                 'product_name'  => 'MIN(product_name)',
-                'product_model' => 'MIN(product_model)',
+                'product_brand' => 'MIN(product_brand)',
                 'product_price' => 'MAX(product_price)',
                 'qty'           => 'COUNT(*)',
             ])
@@ -114,7 +114,7 @@ class PriceListService extends Component
             $result[] = [
                 'sku'   => $sku,
                 'model' => (string) $row['product_name'],
-                'brand' => (string) $row['product_model'],
+                'brand' => (string) $row['product_brand'],
                 'price' => $price,
                 'qty'   => $qty,
             ];
