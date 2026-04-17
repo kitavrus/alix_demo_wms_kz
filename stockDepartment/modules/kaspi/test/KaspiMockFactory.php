@@ -33,6 +33,8 @@ class KaspiMockFactory
                 'status' => 'ACCEPTED_BY_MERCHANT',
                 'deliveryCost' => 1000,
                 'isImeiRequired' => false,
+                'waybill' => 'https://kaspi.kz/waybills/' . $id . '.pdf',
+                'waybillNumber' => 'WB-' . $id,
             ],
             'relationships' => [
                 'entries' => [
@@ -237,15 +239,6 @@ class KaspiMockFactory
         $order['attributes']['status'] = $newStatus;
 
         return ['data' => $order];
-    }
-
-    public static function getOrderWaybillApiResponse($orderId)
-    {
-        return [
-            'orderId' => $orderId,
-            'waybillNumber' => 'WB-' . $orderId,
-            'waybillUrl' => 'https://kaspi.kz/waybills/' . $orderId . '.pdf',
-        ];
     }
 
     /**

@@ -7,7 +7,10 @@
  */
 namespace console\controllers;
 use stockDepartment\modules\kaspi\services\Alix1CApiService;
+use stockDepartment\modules\kaspi\services\OneCSalesSyncService;
+use stockDepartment\modules\kaspi\services\OrderImportService;
 use stockDepartment\modules\kaspi\services\OrderReturnService;
+use stockDepartment\modules\kaspi\services\OrderStatusSyncService;
 use stockDepartment\modules\kaspi\services\PriceService;
 use stockDepartment\modules\kaspi\services\ProductSyncService;
 use common\modules\billing\models\TlDeliveryProposalBilling;
@@ -411,6 +414,101 @@ class CronController extends Controller
         echo "Kaspi price activation: sent={$result['sent']}, errors={$result['errors']}, total={$result['total']}\n";
 
         return $result['errors'] > 0 ? 1 : 0;
+    }
+
+    /**
+     * Опросить Kaspi на новые подтверждённые заказы (APPROVED_BY_BANK, state=NEW)
+     * и импортировать их в EcommerceOutbound + зарезервировать сток.
+     *
+     * Окно poll — последние orderPollWindowHours часов (по умолчанию 6).
+     * Идемпотентно по external_order_number.
+     * Рекомендуемое расписание: каждые 15 минут.
+     *
+     * php yii cron/kaspi-poll-orders
+     */
+    public function actionKaspiPollOrders()
+    {
+        $module = Yii::$app->getModule('kaspi');
+        /** @var OrderImportService $service */
+        $service = $module !== null ? $module->get('orderImportService') : null;
+        if (!$service instanceof OrderImportService) {
+            $service = new OrderImportService();
+            $service->init();
+        }
+
+        $result = $service->pollAndImportNew();
+
+        $fetched   = isset($result['fetched']) ? (int) $result['fetched'] : 0;
+        $imported  = isset($result['imported']) ? (int) $result['imported'] : 0;
+        $skipped   = isset($result['skipped_existing']) ? (int) $result['skipped_existing'] : 0;
+        $noStock   = isset($result['failed_no_stock']) ? (int) $result['failed_no_stock'] : 0;
+        $errors    = isset($result['errors']) ? (int) $result['errors'] : 0;
+        $status    = isset($result['status']) ? (string) $result['status'] : 'unknown';
+
+        echo "Kaspi order poll: status={$status}, fetched={$fetched}, imported={$imported}, "
+            . "skipped_existing={$skipped}, no_stock={$noStock}, errors={$errors}\n";
+
+        return ($status === 'OK' && $errors === 0) ? 0 : 1;
+    }
+
+    /**
+     * Синхронизировать статусы активных Kaspi-заказов: обновить external_kaspi_status,
+     * снять резерв на CANCELLING/CANCELLED, пометить COMPLETED как PENDING для 1С.
+     * Рекомендуемое расписание: каждые 15 минут.
+     *
+     * php yii cron/kaspi-sync-order-statuses
+     */
+    public function actionKaspiSyncOrderStatuses()
+    {
+        $module = Yii::$app->getModule('kaspi');
+        /** @var OrderStatusSyncService $service */
+        $service = $module !== null ? $module->get('orderStatusSyncService') : null;
+        if (!$service instanceof OrderStatusSyncService) {
+            $service = new OrderStatusSyncService();
+            $service->init();
+        }
+
+        $result = $service->syncActiveOrders();
+
+        $checked   = isset($result['checked']) ? (int) $result['checked'] : 0;
+        $cancelled = isset($result['cancelled']) ? (int) $result['cancelled'] : 0;
+        $completed = isset($result['completed']) ? (int) $result['completed'] : 0;
+        $errors    = isset($result['errors']) ? (int) $result['errors'] : 0;
+        $status    = isset($result['status']) ? (string) $result['status'] : 'unknown';
+
+        echo "Kaspi order status sync: status={$status}, checked={$checked}, "
+            . "cancelled={$cancelled}, completed={$completed}, errors={$errors}\n";
+
+        return ($status === 'OK' && $errors === 0) ? 0 : 1;
+    }
+
+    /**
+     * Передать выполненные Kaspi-заказы в 1С (one_c_status=PENDING → SENT/ERROR).
+     * Сейчас 1С endpoint — заглушка в Alix1CApiService::postSale.
+     * Рекомендуемое расписание: каждые 30 минут.
+     *
+     * php yii cron/kaspi-sync-completed-to-1c
+     */
+    public function actionKaspiSyncCompletedTo1c()
+    {
+        $module = Yii::$app->getModule('kaspi');
+        /** @var OneCSalesSyncService $service */
+        $service = $module !== null ? $module->get('oneCSalesSyncService') : null;
+        if (!$service instanceof OneCSalesSyncService) {
+            $service = new OneCSalesSyncService();
+            $service->init();
+        }
+
+        $result = $service->syncPendingSales();
+
+        $picked = isset($result['picked']) ? (int) $result['picked'] : 0;
+        $sent   = isset($result['sent']) ? (int) $result['sent'] : 0;
+        $errors = isset($result['errors']) ? (int) $result['errors'] : 0;
+        $status = isset($result['status']) ? (string) $result['status'] : 'unknown';
+
+        echo "Kaspi -> 1C sales sync: status={$status}, picked={$picked}, sent={$sent}, errors={$errors}\n";
+
+        return ($status === 'OK' && $errors === 0) ? 0 : 1;
     }
 
     /**

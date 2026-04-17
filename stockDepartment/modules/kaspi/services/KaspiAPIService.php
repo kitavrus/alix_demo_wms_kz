@@ -458,10 +458,27 @@ class KaspiAPIService extends Component
         ]);
     }
 
-    /** Сформировать накладную (передача в доставку). */
-    public function submitOrderKaspiDelivery($orderId)
+    /**
+     * Перевести заказ в статус ASSEMBLE («Скомплектован») и тем самым инициировать
+     * формирование накладной на стороне Kaspi. По доке (q3210) — POST /v2/orders
+     * с status=ASSEMBLE и атрибутом numberOfSpace (кол-во мест/накладных).
+     *
+     * Ссылка на PDF накладной после этого появляется в атрибуте `waybill` заказа
+     * (см. getShippingLabel()).
+     *
+     * @param string $orderId
+     * @param int    $numberOfSpace
+     * @return array
+     */
+    public function assembleOrder($orderId, $numberOfSpace = 1)
     {
-        return $this->changeOrderStatus($orderId, OrderStatus::ORDER_KASPI_DELIVERY);
+        $numberOfSpace = max(1, (int) $numberOfSpace);
+
+        return $this->changeOrderStatus(
+            $orderId,
+            OrderStatus::ORDER_ASSEMBLE,
+            ['numberOfSpace' => $numberOfSpace]
+        );
     }
 
     /** Принять заказ. */
@@ -470,10 +487,53 @@ class KaspiAPIService extends Component
         return $this->changeOrderStatus($orderId, OrderStatus::ORDER_ACCEPTED_BY_MERCHANT);
     }
 
-    /** Изменить статус на 'Выдан'. */
-    public function completeOrder($orderId)
+    /**
+     * Запросить отправку SMS-кода покупателю (шаг 1 из q3212).
+     * Kaspi отправляет код в приложение клиента, ответ — 200/JSON:API.
+     *
+     * Применимо для own-delivery / pickup. Для Kaspi Delivery COMPLETED
+     * приходит автоматически со стороны Kaspi — этот метод не вызывается.
+     *
+     * @param string $orderId
+     * @return array
+     */
+    public function sendCompletionCode($orderId)
     {
-        return $this->changeOrderStatus($orderId, OrderStatus::ORDER_COMPLETED);
+        return $this->postOrderPayloadWithCompletionHeaders(
+            [
+                'data' => [
+                    'type' => 'orders',
+                    'id' => $orderId,
+                    'attributes' => ['status' => OrderStatus::ORDER_COMPLETED],
+                ],
+            ],
+            ''
+        );
+    }
+
+    /**
+     * Подтвердить выдачу заказа кодом, который назвал клиент (шаг 2 из q3212).
+     *
+     * @param string $orderId
+     * @param string $code   Код, названный клиентом (из приложения Kaspi)
+     * @return array
+     */
+    public function confirmCompletionWithCode($orderId, $code)
+    {
+        if ($code === null || $code === '') {
+            throw new \InvalidArgumentException('confirmCompletionWithCode: code is required');
+        }
+
+        return $this->postOrderPayloadWithCompletionHeaders(
+            [
+                'data' => [
+                    'type' => 'orders',
+                    'id' => $orderId,
+                    'attributes' => ['status' => OrderStatus::ORDER_COMPLETED],
+                ],
+            ],
+            (string) $code
+        );
     }
 
     /** Отменить заказ. */
@@ -581,30 +641,22 @@ class KaspiAPIService extends Component
         );
     }
 
-    public function createWaybill($orderId, array $payload)
-    {
-        if ($this->useMock) {
-            return KaspiMockFactory::getOrderWaybillApiResponse($orderId);
-        }
-
-        return $this->sendRequest(
-            $this->createRequest()
-                ->setMethod('POST')
-                ->setUrl($this->orderSubResourceUrl($orderId, KaspiConstants::ORDER_WAYBILL_SUBPATH))
-                ->setData($payload)
-        );
-    }
-
     /**
-     * Скачать PDF-этикетку заказа от Kaspi.
+     * Скачать PDF-этикетку (накладную) заказа.
      *
-     * Возвращает массив:
-     *   ['mime' => 'application/pdf', 'body' => <binary pdf>]
+     * По доке Kaspi (q3201 / q3210):
+     *   1) Для получения ссылки на накладную заказ должен быть переведён в
+     *      статус ASSEMBLE через assembleOrder().
+     *   2) Затем GET /v2/orders/{id} — в атрибутах заказа появляется поле
+     *      `waybill` (URL на печатную форму) и `waybillNumber`.
+     *   3) По URL из `waybill` скачивается PDF простым GET-запросом (без
+     *      X-Auth-Token — ссылка уже подписная).
      *
      * В useMock-режиме возвращает минимальный валидный PDF из KaspiMockFactory.
      *
      * @param string $orderId
      * @return array{mime:string, body:string}
+     * @throws KaspiApiException если accordeon ASSEMBLE ещё не сформирован или URL недоступен
      */
     public function getShippingLabel($orderId)
     {
@@ -612,48 +664,23 @@ class KaspiAPIService extends Component
             return KaspiMockFactory::getShippingLabelPdfMock($orderId);
         }
 
-        $request = $this->createRequest()
-            ->setMethod('GET')
-            ->setUrl($this->orderSubResourceUrl($orderId, KaspiConstants::ORDER_WAYBILL_SUBPATH));
-        $request->headers->set('Accept', 'application/pdf');
-
-        if ($this->httpLogEnabled && Yii::$app->has('log')) {
-            Yii::getLogger()->log(
-                "Kaspi label request:\n" . $request->toString(),
-                Logger::LEVEL_TRACE,
-                KaspiConstants::LOG_CATEGORY
-            );
+        $order = $this->getOrderById($orderId);
+        if ($order === null) {
+            throw new KaspiApiException('Kaspi order not found: ' . $orderId, 404, null, 404);
         }
 
-        try {
-            $response = $request->send();
-        } catch (\Exception $e) {
-            throw new KaspiApiException('Kaspi API transport error: ' . $e->getMessage(), 0, $e);
-        }
-
-        if (!$response->isOk) {
-            $body = $response->content;
-            if (strlen($body) > 2000) {
-                $body = substr($body, 0, 2000) . '…';
-            }
+        $waybillUrl = isset($order->waybill) ? (string) $order->waybill : '';
+        if ($waybillUrl === '') {
             throw new KaspiApiException(
-                'Kaspi API HTTP ' . $response->statusCode,
-                (int) $response->statusCode,
+                'Waybill URL is not yet available for order ' . $orderId
+                . '. Make sure the order was moved to ASSEMBLE status first.',
+                409,
                 null,
-                (int) $response->statusCode,
-                $body
+                409
             );
         }
 
-        $mime = (string) $response->headers->get('Content-Type');
-        if ($mime === '') {
-            $mime = 'application/pdf';
-        }
-
-        return [
-            'mime' => $mime,
-            'body' => (string) $response->content,
-        ];
+        return $this->downloadWaybillPdf($waybillUrl);
     }
 
     // Замыкание для запросов с ответом или ошибкой
@@ -676,6 +703,80 @@ class KaspiAPIService extends Component
     }
 
     // MARK: - PRIVATES
+
+    /**
+     * POST /v2/orders с заголовками X-Send-Code / X-Security-Code
+     * (двухшаговое подтверждение COMPLETED по q3212).
+     */
+    private function postOrderPayloadWithCompletionHeaders(array $payload, $securityCode)
+    {
+        if ($this->useMock) {
+            return KaspiMockFactory::postOrderPayloadResponse($payload);
+        }
+        if (!isset($payload['data']['type'])) {
+            $payload['data']['type'] = 'orders';
+        }
+
+        $request = $this->createRequest()
+            ->setMethod('POST')
+            ->setUrl(KaspiConstants::ORDERS_ENDPOINT)
+            ->setData($payload);
+        $request->headers->set('X-Send-Code', 'true');
+        $request->headers->set('X-Security-Code', (string) $securityCode);
+
+        return $this->sendRequest($request);
+    }
+
+    /**
+     * Скачать подписный PDF по URL из поля `waybill` заказа.
+     * Ссылка в теории уже авторизована — отдельный HttpClient без Kaspi-заголовков.
+     */
+    private function downloadWaybillPdf($url)
+    {
+        $client = new HttpClient();
+        $request = $client->createRequest()
+            ->setMethod('GET')
+            ->setUrl($url);
+        $request->headers->set('Accept', 'application/pdf');
+
+        if ($this->httpLogEnabled && Yii::$app->has('log')) {
+            Yii::getLogger()->log(
+                "Kaspi waybill download request:\n" . $request->toString(),
+                Logger::LEVEL_TRACE,
+                KaspiConstants::LOG_CATEGORY
+            );
+        }
+
+        try {
+            $response = $request->send();
+        } catch (\Exception $e) {
+            throw new KaspiApiException('Kaspi waybill download transport error: ' . $e->getMessage(), 0, $e);
+        }
+
+        if (!$response->isOk) {
+            $body = $response->content;
+            if (strlen($body) > 2000) {
+                $body = substr($body, 0, 2000) . '…';
+            }
+            throw new KaspiApiException(
+                'Kaspi waybill download HTTP ' . $response->statusCode,
+                (int) $response->statusCode,
+                null,
+                (int) $response->statusCode,
+                $body
+            );
+        }
+
+        $mime = (string) $response->headers->get('Content-Type');
+        if ($mime === '') {
+            $mime = 'application/pdf';
+        }
+
+        return [
+            'mime' => $mime,
+            'body' => (string) $response->content,
+        ];
+    }
 
     private function orderSubResourceUrl($orderId, $subPath)
     {

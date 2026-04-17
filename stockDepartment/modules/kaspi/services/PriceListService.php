@@ -38,10 +38,9 @@ class PriceListService extends Component
     const PRICE_LIST_DIR_ALIAS = '@stockDepartment/modules/kaspi/price-list';
     const PRICE_LIST_WEB_DIR_ALIAS = '@stockDepartment/web';
 
-    // TODO: заменить на реальные данные из кабинета Kaspi
-    const KASPI_COMPANY = 'COMPANY_NAME';
-    const KASPI_MERCHANT_ID = 'MERCHANT_ID';
-    const KASPI_STORE_ID = 'STORE_ID';
+    const KASPI_COMPANY = 'ТОО "GLOMARK KZK"';
+    const KASPI_MERCHANT_ID = '30453464';
+    const KASPI_STORE_ID = 'PP1';
 
     /**
      * Сгенерировать Excel-прайс-лист и вернуть путь к файлу.

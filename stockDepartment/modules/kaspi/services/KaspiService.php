@@ -242,22 +242,35 @@ class KaspiService extends Component
     // MARK: - Order lifecycle
 
     /**
-     * Передать заказ курьеру: формируем накладную и переводим заказ в KASPI_DELIVERY.
+     * Передать заказ на Kaspi Доставку: перевод заказа в статус ASSEMBLE
+     * с указанием numberOfSpace (кол-во мест/накладных). После этого на стороне
+     * Kaspi формируется накладная, а в атрибутах заказа появляется URL
+     * поля `waybill` (PDF скачивается через getOrderLabel()).
      *
-     * @param string $orderId  Kaspi order id
-     * @param array  $payload  Доп. атрибуты накладной (waybill body)
+     * @param string $orderId Kaspi order id
+     * @param array  $payload Опции: { "numberOfSpace": int (>=1, default 1) }
      * @return array
      */
     public function transferToCourier($orderId, array $payload = [])
     {
-        $waybill = $this->api->createWaybill($orderId, $payload);
-        $statusResponse = $this->api->submitOrderKaspiDelivery($orderId);
+        $numberOfSpace = 1;
+        if (isset($payload['numberOfSpace'])) {
+            $numberOfSpace = max(1, (int) $payload['numberOfSpace']);
+        }
+
+        $statusResponse = $this->api->assembleOrder($orderId, $numberOfSpace);
+
+        $order = $this->api->getOrderById($orderId);
+        $waybillUrl = $order !== null && isset($order->waybill) ? (string) $order->waybill : '';
+        $waybillNumber = $order !== null && isset($order->waybillNumber) ? (string) $order->waybillNumber : '';
 
         return [
-            'status'         => 'OK',
-            'order_id'       => $orderId,
-            'order_status'   => 'KASPI_DELIVERY',
-            'waybill'        => $waybill,
+            'status'          => 'OK',
+            'order_id'        => $orderId,
+            'order_status'    => 'ASSEMBLE',
+            'number_of_space' => $numberOfSpace,
+            'waybill_url'     => $waybillUrl,
+            'waybill_number'  => $waybillNumber,
             'status_response' => $statusResponse,
         ];
     }

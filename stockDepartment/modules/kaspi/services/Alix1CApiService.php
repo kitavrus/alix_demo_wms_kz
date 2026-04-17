@@ -118,6 +118,31 @@ class Alix1CApiService extends Component
         return $dtos;
     }
 
+    /**
+     * Отправить выполненную продажу в 1С.
+     *
+     * ЗАГЛУШКА: реальная спецификация endpoint 1С ещё не получена. Сейчас метод
+     * только логирует payload и возвращает псевдо-ответ. Когда 1С отдаст
+     * спецификацию (URL, auth, формат) — подменим тело на реальный HTTP-вызов
+     * без изменения контракта возвращаемого значения.
+     *
+     * @param array $payload payload продажи: { order_number, kaspi_order_id, customer, items[], totals }
+     * @return array ['status' => 'OK'|'ERROR', 'message' => ?, 'one_c_ref' => ?]
+     */
+    public function postSale(array $payload)
+    {
+        Yii::info(
+            'Alix 1C postSale (stub): ' . json_encode($payload, JSON_UNESCAPED_UNICODE),
+            KaspiConstants::LOG_CATEGORY_ALIX_1C
+        );
+
+        return [
+            'status'    => 'OK',
+            'message'   => 'stub: 1C endpoint not yet configured',
+            'one_c_ref' => null,
+        ];
+    }
+
     private function logTrace($label, $content)
     {
         if (!$this->httpLogEnabled || !Yii::$app->has('log')) {

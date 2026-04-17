@@ -6,7 +6,10 @@ use stockDepartment\modules\kaspi\constants\KaspiConstants;
 use stockDepartment\modules\kaspi\services\Alix1CApiService;
 use stockDepartment\modules\kaspi\services\KaspiAPIService;
 use stockDepartment\modules\kaspi\services\KaspiService;
+use stockDepartment\modules\kaspi\services\OrderImportService;
 use stockDepartment\modules\kaspi\services\OrderReturnService;
+use stockDepartment\modules\kaspi\services\OneCSalesSyncService;
+use stockDepartment\modules\kaspi\services\OrderStatusSyncService;
 use stockDepartment\modules\kaspi\services\PriceListService;
 use stockDepartment\modules\kaspi\services\PriceService;
 use stockDepartment\modules\kaspi\services\ProductSyncService;
@@ -49,6 +52,12 @@ class kaspi extends Module
     /** @var int Таймаут Alix 1C запросов, сек */
     public $alix1cTimeoutSeconds = KaspiConstants::ALIX_1C_DEFAULT_TIMEOUT;
 
+    /** @var int Окно poll по creationDate для OrderImportService (часы) */
+    public $orderPollWindowHours = 6;
+
+    /** @var int client_id по умолчанию для Kaspi-заказов */
+    public $kaspiClientId = 0;
+
     public function init()
     {
         parent::init();
@@ -78,6 +87,17 @@ class kaspi extends Module
         ]);
         $this->set('orderReturnService', [
             'class' => OrderReturnService::class,
+        ]);
+        $this->set('orderImportService', [
+            'class' => OrderImportService::class,
+            'pollWindowHours' => (int) $this->orderPollWindowHours,
+            'defaultClientId' => (int) $this->kaspiClientId,
+        ]);
+        $this->set('orderStatusSyncService', [
+            'class' => OrderStatusSyncService::class,
+        ]);
+        $this->set('oneCSalesSyncService', [
+            'class' => OneCSalesSyncService::class,
         ]);
         $this->set('alix1cApiService', [
             'class' => Alix1CApiService::class,
