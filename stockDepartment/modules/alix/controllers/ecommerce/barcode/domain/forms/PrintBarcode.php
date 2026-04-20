@@ -5,7 +5,7 @@
  * Date: 11.09.2019
  * Time: 17:27
  */
-namespace stockDepartment\modules\intermode\controllers\ecommerce\barcode\domain\forms;
+namespace stockDepartment\modules\alix\controllers\ecommerce\barcode\domain\forms;
 
 use yii\base\Model;
 use Yii;

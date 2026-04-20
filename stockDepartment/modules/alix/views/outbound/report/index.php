@@ -1,155 +1,130 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: kitavrus
- * Date: 30.01.15
- * Time: 17:43
- */
 
 use yii\helpers\Html;
-use yii\helpers\Url;
-use common\modules\store\models\Store;
+use yii\grid\GridView;
 use common\helpers\iHelper;
-$this->title = Yii::t('outbound/titles', 'Report: outbound orders');
+use yii\helpers\Url;
+use stockDepartment\modules\alix\controllers\outbound\domain\constants\OutboundStatus;
+
+/* @var $this yii\web\View */
+/* @var $searchModel common\ecommerce\entities\EcommerceOutboundSearch */
+/* @var $dataProvider yii\data\ActiveDataProvider */
+
+$this->title = 'Ecommerce Outbounds Report';
 $this->params['breadcrumbs'][] = $this->title;
 ?>
+<div class="ecommerce-outbound-index">
 
-<h1><?= Html::encode($this->title) ?></h1>
-<?= $this->render('_search', ['model' => $searchModel, 'clientsArray' => $clientsArray,'clientStoreArray'=>$clientStoreArray]); ?>
+    <h1><?= Html::encode($this->title) ?></h1>
+    <?php echo $this->render('_search', ['model' => $searchModel]); ?>
 
-<?= \yii\grid\GridView::widget([
-    'id' => 'grid-view-order-items',
-    'dataProvider' => $dataProvider,
-    'rowOptions'=> function ($model, $key, $index, $grid) {
-        $class = iHelper::getStockGridColor($model->status);
-        return ['class'=>$class];
-    },
-    'columns' => [
-	     [
-                'label'=> 'action',
+    <?= GridView::widget([
+        'id' => 'outbound-orders-list',
+        'dataProvider' => $dataProvider,
+//        'filterModel' => $searchModel,
+        'rowOptions'=> function ($model, $key, $index, $grid) {
+            $class = OutboundStatus::getStockGridColor($model->status);
+            return ['class'=>$class];
+        },
+        'columns' => [
+//            ['class' => 'yii\grid\SerialColumn'],
+            [
+                'attribute'=> 'id',
                 'format'=> 'html',
-                //'noWrap'=> true,
+                'value' => function ($data) { return Html::tag('a', $data->id, ['href'=>\yii\helpers\Url::to(['view', 'id' => $data->id]), 'target'=>'_blank']);},
+
+            ],
+//            [
+//                'attribute'=> 'client_ReferenceNumber',
+//                'label'=> 'ТТН',
+//                'format'=> 'html',
+//                'value' => function ($data) { return $data->client_ReferenceNumber; },
+//
+//            ],
+//            'external_order_number',
+            'order_number',
+            [
+                'attribute'=> 'Этикетки',
+                'format'=> 'html',
                 'value' => function ($data) {
-                    return '<h4 class="pull-left">'.Html::tag('a', 'Лист сборки', ['href'=>Url::to(['/intermode/outbound/picking/print', 'id' => $data->id]),'class'=>'label label-warning','style'=>'margin:5px; display: block;']).'</h4>';
+
+                    $link = '';
+//                    if(!empty($data->path_to_cargo_label_file) ) {
+//                        $link .= Html::tag('a', 'Маленькая', ['href'=> Url::to(['/ecommerce/defacto/outbound/print-cargo-label','id'=>$data->id]), 'target'=>'_blank']);
+//
+//                        $link .= ' / ';
+//                    } elseif(!empty($data->path_to_order_doc)) {
+//                    	if($data->client_ShipmentSource != "LamodaKazakhistan") {
+//							$link .= Html::tag('a', 'Получить повторно маленькую', [
+//								'href'=> Url::to(['/ecommerce/defacto/outbound/resend-get-cargo-label','orderNumber'=>$data->order_number]),
+//								'class'=>'btn btn-danger',
+//								'target'=>'_blank',
+//							]);
+
+//							if($data->client_ShipmentSource == "KaspiKazakhistan" && !empty($data->external_order_number)) {
+//								$link .= ' / ';
+//								$link .= Html::tag('a', 'Маленькая Kaspi', [
+//										'href' => 'http://cdn.ayensoftware.com/kaspikz/5366/e-' . $data->external_order_number . '.pdf',
+//									'class'=>'btn btn-info',
+//									'target' => '_blank'
+//								]);
+//							}
+//
+//							$link .= ' / ';
+//	                    }
+//                    }
+//                    if(!empty($data->path_to_order_doc) ) {
+//                        $link .= Html::tag('a', 'Большая', ['href'=> Url::to(['/ecommerce/defacto/outbound/print-waybill','id'=>$data->id]), 'target'=>'_blank']);
+//                    }
+                    if(!empty($data->allocated_qty) ) {
+//                        if(!empty($link)) {
+//                            $link .= ' / ';
+//                        }
+                        $link .= Html::tag('a', 'Лист сборки', ['href' => Url::to(['/alix/outbound/picking/print-picking-list-no-reserve', 'id' => $data->id]), 'target' => '_blank']);
+                    }
+                    return $link;
                 },
             ],
-	    [
-                'label'=> 'action',
+            'expected_qty',
+            'allocated_qty',
+            'accepted_qty',
+			'client_ShipmentSource',
+            [
+                'attribute'=> 'status',
                 'format'=> 'html',
-                //'noWrap'=> true,
                 'value' => function ($data) {
-                    return '<h4 class="pull-left">'.Html::tag('a', 'АКТ ППТ', ['href'=>Url::to(['print-box-kg-list', 'id' => $data->id]),'class'=>'label label-default','style'=>'margin:5px; display: block;']).'</h4>';
+                    return OutboundStatus::getValue($data->status);
                 },
             ],
-        [
-            'attribute'=> 'id',
-            'format'=> 'html',
-            'value' => function ($data) { return Html::tag('a', $data->id, ['href'=>Url::to(['view', 'id' => $data->id]), 'target'=>'_blank']);},
-
+            'packing_date:datetime',
+            'date_left_warehouse:datetime',
+            'created_at:datetime',
+            'updated_at:datetime',
         ],
-        [
-            'attribute'=>'client_id',
-            'value'=>function($data) use ($clientsArray){
-                if(isset($clientsArray[$data->client_id])){
-                    return $clientsArray[$data->client_id];
-                }
-                return '-';
-            },
-        ],
-        'parent_order_number',
-        'order_number',
-        [
-            'attribute'=>  'to_point_title',
-            'value'=>function ($model) use ($clientStoreArray) {
-                return \yii\helpers\ArrayHelper::getValue($clientStoreArray,$model->to_point_id);
-            }
-        ],
-        'expected_qty',
-        [
-            'attribute'=>'allocated_qty',
-            'contentOptions' => function ($model, $key, $index, $column) {
-                return ['id'=>'allocated-qty-cell-'.$model->id];
-            }
-        ],
-        'accepted_qty',
-        'packing_date:datetime',
-        'date_left_warehouse:datetime',
-        'date_delivered:datetime',
-        'api_complete_status',
-        [
-            'attribute'=>'status',
-            'value'=> function($model) {
-                return $model->getStatusValue();
-            }
-        ],
-        [
-            'attribute'=>'cargo_status',
-            'value'=> function($model) {
-                return $model->getCargoStatusValue();
-            }
-        ],
-        [
-            'label' => 'WMS',
-            'value' => function($model){
-                return $model->calculateWMS();
-            }
-        ],
-        [
-            'label' => 'TR',
-            'value' => function($model){
-                return $model->calculateTR();
-            }
-        ],
-        [
-            'label' => 'Full',
-            'value' => function($model){
-                return $model->calculateFULL();
-            }
-        ],
-		[
-				'attribute'=>'actions',
-				'label' => Yii::t('outbound/forms','Actions'),
-				'format' => 'raw',
-				'value' => function($model) {
-					return \yii\helpers\Html::a(
-								Yii::t('outbound/buttons', 'Повторно отправить API'),
-								Url::to(['/wms/defacto/outbound-v2/resend-api?orderId='.$model->id]),
-								[
-									'class' => 'btn btn-primary resend-api-data',
-									'style' => ' margin-left:10px; display:none;',
-									'id' => 'outbound-print-bt-'.$model->id,
-								]
-						);
-				},
-		]
-    ],
-]); ?>
-
+    ]); ?>
+</div>
 <div>
 
-    <?= Html::tag('span',Yii::t('transportLogistics/buttons','Export to Exel'),['class' => 'btn btn-success','id'=>'report-order-export-btn', 'data-url'=>'/intermode/outbound/report/export-to-excel']) ?>
-    <?= Html::tag('span',Yii::t('transportLogistics/buttons','Export Items to Excel'),['class' => 'btn btn-success','id'=>'report-order-export-full-btn', 'data-url'=>'/intermode/outbound/report/export-to-excel-plus-product']) ?>
+    <?= Html::tag('span',Yii::t('transportLogistics/buttons','Export to Excel'),['class' => 'btn btn-success','id'=>'report-order-export-btn', 'data-url'=>'/alix/outbound/report/outbound-export-to-excel']) ?>
+    <?= Html::tag('span',Yii::t('transportLogistics/buttons','Export to Excel with Products'),['class' => 'btn btn-success','id'=>'report-order-export-full-btn', 'data-url'=>'/alix/outbound/report/outbound-export-to-excel-with-products']) ?>
+<!--	--><?//= Html::tag('span',Yii::t('transportLogistics/buttons','Export to Excel for Dastan'),['class' => 'btn btn-success','id'=>'report-order-export-dastan-btn', 'data-url'=>'/ecommerce/defacto/report/outbound-export-to-excel-dastan']) ?>
     <br />
 </div>
 
 <script type="text/javascript">
     $(function(){
 
-		$('body').on('keyup', function (e) {
-			if (e.which == 80) {
-				$(".resend-api-data").show();
-			}
-		});
-
         $('#report-order-export-btn').on('click',function() {
-            window.location.href = $(this).data('url')+'?'+$('#outbound-orders-grid-search-form').serialize();
+            window.location.href = $(this).data('url')+'?'+$('#outbound-order-search-form').serialize();
         });
 
         $('#report-order-export-full-btn').on('click',function() {
-            window.location.href = $(this).data('url')+'?'+$('#outbound-orders-grid-search-form').serialize();
+            window.location.href = $(this).data('url')+'?'+$('#outbound-order-search-form').serialize();
         });
 
+        $('#report-order-export-dastan-btn').on('click',function() {
+            window.location.href = $(this).data('url')+'?'+$('#outbound-order-search-form').serialize();
+        });
+		
     });
 </script>
-
-

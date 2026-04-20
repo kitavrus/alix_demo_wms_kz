@@ -157,7 +157,11 @@ return [
 			'class' => 'stockDepartment\modules\mobile\Mobile',
 		],
         'kaspi' => [
-            'class' => 'stockDepartment\modules\kaspi\kaspi',
+            'class'         => 'stockDepartment\modules\kaspi\kaspi',
+            'apiToken'      => '+vWV5nZLFOVPEisce0YR9doMiBlv0NKfclVukFWP1SM=',
+            'useMock'       => false,
+            'httpLog'       => true,
+            'kaspiClientId' => 103,
         ],
     ],
     'components' => [
@@ -274,6 +278,16 @@ return [
 					'pattern' => "kaspi/api/v1/alix-sync-items",
 					'route'   => "kaspi/api/v1/kaspi/alix-sync-items",
 					'verb'    => ['POST', 'GET']
+				],
+				[
+					'pattern' => "kaspi/api/v1/orders",
+					'route'   => "kaspi/api/v1/kaspi/orders",
+					'verb'    => 'GET'
+				],
+				[
+					'pattern' => "kaspi/api/v1/orders/<orderId:[^\/]+>",
+					'route'   => "kaspi/api/v1/kaspi/order",
+					'verb'    => 'GET'
 				],
             ]
         ],

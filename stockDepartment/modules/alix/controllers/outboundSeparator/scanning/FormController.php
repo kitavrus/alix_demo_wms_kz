@@ -10,7 +10,7 @@ use yii\web\Response;
 
 class FormController extends Controller
 {
-    // /alix/outboundSeparator/scan/form/index
+    // /alix/ecommerce/outboundSeparator/scan/form/index
     public function actionIndex()
     {
         $form = new ScanningForm();

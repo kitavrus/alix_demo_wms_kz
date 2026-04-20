@@ -5,13 +5,13 @@
  * Date: 11.09.2019
  * Time: 17:46
  */
-namespace stockDepartment\modules\intermode\controllers\ecommerce\barcode\domain\service;
+namespace stockDepartment\modules\alix\controllers\ecommerce\barcode\domain\service;
 
 
-use stockDepartment\modules\intermode\controllers\ecommerce\inbound\domain\entities\EcommerceInboundPlaceBarcode;
-use stockDepartment\modules\intermode\controllers\ecommerce\outbound\domain\entities\EcommerceOutboundPackageBarcode;
-use stockDepartment\modules\intermode\controllers\ecommerce\stock\domain\entities\EcommerceStock;
-use stockDepartment\modules\intermode\controllers\ecommerce\stock\domain\constants\StockAvailability;
+use stockDepartment\modules\alix\controllers\inbound\returns\domain\entities\EcommerceInboundPlaceBarcode;
+use stockDepartment\modules\alix\controllers\outbound\domain\entities\EcommerceOutboundPackageBarcode;
+use stockDepartment\modules\alix\controllers\ecommerce\stock\domain\entities\EcommerceStock;
+use stockDepartment\modules\alix\controllers\ecommerce\stock\domain\constants\StockAvailability;
 use yii\helpers\ArrayHelper;
 
 class BarcodeService

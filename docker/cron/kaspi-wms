@@ -1,0 +1,47 @@
+# /etc/cron.d/kaspi-wms
+#
+# Kaspi WMS cron schedule.
+# Скопировать на прод:
+#   sudo install -m 0644 -o root -g root docker/cron/kaspi-wms /etc/cron.d/kaspi-wms
+#   sudo systemctl restart cron       # Debian/Ubuntu
+#   # либо: sudo service cron reload
+#
+# ВАЖНО:
+#   - APP_DIR и APP_USER поправить под ваш прод (путь деплоя и пользователь php-fpm/apache).
+#   - Файл /etc/cron.d/* не должен иметь расширения и обязан иметь права 0644, owner root:root.
+#   - Формат: MIN HOUR DOM MON DOW USER COMMAND (в crontab.d/* пользователь обязателен).
+#
+# Логи: каждая команда пишет короткую сводку в /var/log/kaspi/*.log.
+# Перед включением создать директорию:
+#   sudo mkdir -p /var/log/kaspi && sudo chown www-data:www-data /var/log/kaspi
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+APP_DIR=/var/www/html
+APP_USER=www-data
+MAILTO=""
+
+# --- Номенклатура (Alix 1C → product_v2 / product_barcodes_v2) -------------------
+# Первым: поллы заказов/стоков/прайсов опираются на актуальный product_v2.
+*/30 * * * *   www-data   cd /var/www/html && php yii cron/alix-sync-items               >> /var/log/kaspi/alix-sync-items.log         2>&1
+
+# --- Приход заказов Kaspi -------------------------------------------------------
+# Сердце потока: APPROVED_BY_BANK → EcommerceOutbound + резерв ecommerce_stock + acceptOrder.
+*/15 * * * *   www-data   cd /var/www/html && php yii cron/kaspi-poll-orders             >> /var/log/kaspi/kaspi-poll-orders.log       2>&1
+
+# --- Синхронизация статусов активных заказов -----------------------------------
+# CANCELLED → снимаем резерв; COMPLETED → one_c_status=PENDING.
+*/15 * * * *   www-data   cd /var/www/html && php yii cron/kaspi-sync-order-statuses     >> /var/log/kaspi/kaspi-sync-statuses.log     2>&1
+
+# --- Передача завершённых заказов в 1С -----------------------------------------
+# Сейчас Alix1CApiService::postSale — заглушка. Команду можно оставить включённой,
+# она безопасно перекладывает статусы и логирует payload в runtime/logs/alix.1c.log.
+*/30 * * * *   www-data   cd /var/www/html && php yii cron/kaspi-sync-completed-to-1c    >> /var/log/kaspi/kaspi-sync-to-1c.log        2>&1
+
+# --- Возвраты Kaspi → EcommerceInbound -----------------------------------------
+*/30 * * * *   www-data   cd /var/www/html && php yii cron/kaspi-poll-returns            >> /var/log/kaspi/kaspi-poll-returns.log      2>&1
+
+# --- Активация отложенных цен (kaspi_price_history, PENDING → SENT) ------------
+# Перегенерирует xlsx/xml при каждой активации. Нужна, только если через
+# POST /kaspi/api/v1/price-update присылают effective_from в будущем.
+*/30 * * * *   www-data   cd /var/www/html && php yii cron/kaspi-activate-pending-prices >> /var/log/kaspi/kaspi-activate-prices.log   2>&1

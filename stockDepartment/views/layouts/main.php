@@ -77,6 +77,9 @@ AppAsset::register($this);
 					 ['label' => Yii::t('titles', '---------NEW Begin---------'), 'url' => ['/']],
 					 ['label' => Yii::t('titles', 'Приход'), 'url' => ['/alix/inbound/scanning/index']],
 					 ['label' => Yii::t('titles', 'Ecommerce'), 'url' => ['/alix/ecommerce/default/index']],
+					 ['label' => Yii::t('titles', 'Обработка расходов'), 'url' => ['/alix/outbound/scanning/index']],
+					 ['label' => Yii::t('titles', 'Лист отгрузки'), 'url' => ['/alix/outbound/outbound-list/scanning-form']],
+					 ['label' => Yii::t('titles', 'Отчет отгрузки'), 'url' => ['/alix/outbound/report/index']],
 					 ['label' => Yii::t('titles', 'Отчет по API логам'), 'url' => ['/alix/cronManager/report/index']],
 					
 					['label' => Yii::t('titles', 'Загрузить накладную извлечения'), 'url' => ['/intermode/outboundSeparator/uploads/form']],

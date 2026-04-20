@@ -9,7 +9,6 @@ use Yii;
 use common\modules\client\models\Client;
 use stockDepartment\modules\product\models\ProductSearch;
 use stockDepartment\modules\alix\controllers\inbound\domain\InboundScanningService;
-use stockDepartment\modules\alix\controllers\outbound\domain\OutboundService;
 
 use common\modules\outbound\models\OutboundOrderItem;
 use common\modules\stock\models\Stock;
@@ -105,16 +104,6 @@ class DefaultController extends Controller
 
         return $this->redirect('index');
     }
-    /**
-     *
-     * */
-    public function actionResendOutboundStatus($outboundID = -1)
-    {	// default/resend-inbound-status
-//    	(new OutboundService())->sendStatusInCompleted($outboundID);
-    	(new OutboundService())->sendStatusInCompleted(76410);
-        return $this->redirect('index');
-    }
-
     /**
      *
      * */

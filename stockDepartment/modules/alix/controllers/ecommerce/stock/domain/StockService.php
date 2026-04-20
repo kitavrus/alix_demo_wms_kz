@@ -1,10 +1,10 @@
 <?php
-namespace stockDepartment\modules\intermode\controllers\ecommerce\stock\domain;
+namespace stockDepartment\modules\alix\controllers\ecommerce\stock\domain;
 
 
-use stockDepartment\modules\intermode\controllers\ecommerce\stock\domain\constants\StockAPIStatus;
-use stockDepartment\modules\intermode\controllers\ecommerce\inbound\domain\entities\EcommerceInboundItem;
-use stockDepartment\modules\intermode\controllers\ecommerce\stock\domain\entities\EcommerceStock;
+use stockDepartment\modules\alix\controllers\ecommerce\stock\domain\constants\StockAPIStatus;
+use stockDepartment\modules\alix\controllers\inbound\returns\domain\entities\EcommerceInboundItem;
+use stockDepartment\modules\alix\controllers\ecommerce\stock\domain\entities\EcommerceStock;
 use yii\helpers\ArrayHelper;
 use yii\helpers\VarDumper;
 
@@ -18,8 +18,8 @@ class StockService
      */
     public function __construct()
     {
-        $this->repository = new \stockDepartment\modules\intermode\controllers\ecommerce\stock\domain\repository\StockRepository();
-		$this->api = new \stockDepartment\modules\intermode\controllers\ecommerce\stock\domain\StockAPIService();
+        $this->repository = new \stockDepartment\modules\alix\controllers\ecommerce\stock\domain\repository\StockRepository();
+		$this->api = new \stockDepartment\modules\alix\controllers\ecommerce\stock\domain\StockAPIService();
     }
 
     public function isExistEmptyM3($outboundOrderID) {

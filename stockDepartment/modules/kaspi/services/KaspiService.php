@@ -83,6 +83,11 @@ class KaspiService extends Component
         return $this->api->getOrdersResponse($queryParams);
     }
 
+    public function orderById($orderId)
+    {
+        return $this->api->getOrderByIdRaw((string) $orderId);
+    }
+
     // MARK: - Products / Price list
 
     /**

@@ -18,7 +18,7 @@ class FormController extends Controller
 {
 	public function actionIndex()
 	{
-		// /alix/outboundSeparator/uploads/v2/form/index
+		// /alix/ecommerce/outboundSeparator/uploads/v2/form/index
 		$model = new UploadForm();
 		$order = new \stdClass();
 		$order->totalQtyRows = 0;

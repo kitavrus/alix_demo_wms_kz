@@ -115,6 +115,36 @@ class ProductRepository
 	{
 		return ProductV2::findByGuid($guid);
 	}
+
+	/**
+	 * @param string $article
+	 * @return ProductV2|null
+	 */
+	public function getByArticle($article)
+	{
+		if ($article === null || $article === '') {
+			return null;
+		}
+		return ProductV2::find()->andWhere(['article' => $article])->one();
+	}
+
+	/**
+	 * Ищет ProductV2 через product_barcodes_v2.
+	 *
+	 * @param string $barcode
+	 * @return ProductV2|null
+	 */
+	public function getByBarcodeV2($barcode)
+	{
+		if ($barcode === null || $barcode === '') {
+			return null;
+		}
+		$row = ProductBarcodesV2::find()->andWhere(['barcode' => $barcode])->one();
+		if (!$row) {
+			return null;
+		}
+		return ProductV2::findOne($row->product_id);
+	}
 	/**
 	 * @param string $id
 	 * @return string[]

@@ -6,20 +6,25 @@
  * Time: 11:53
  */
 ?>
-<?php //\yii\helpers\VarDumper::dump($items,10,true); die()?>
-
-<?php if( !empty($items) ) { ?>
-    <?php foreach($items as $item) { ?>
-        <?= '<tr id="row-'.$item['id'].'-'.$item['product_barcode'].'" class="'.(!empty($item['box_barcode'])  ? 'alert-success'  : 'alert-danger') . '">';?>
-<!--        --><?//= '<tr id="row-'.$item['id'].'-'.$item['product_barcode'].'" class="'.($item['items'] == $item['items'] ? 'alert-success' : ($item['items'] > $item['items'] ? 'alert-warning' : 'alert-danger')).'">';?>
-            <?= '<td>'.$item['product_barcode'].'</td>'; ?>
-            <?= '<td>'.$item['product_model'].'</td>'; ?>
-            <?= '<td id="box-barcode-'.$item['id'].'-'.$item['product_barcode'].'">'.$item['box_barcode'].'</td>'; ?>
-<!--            --><?//= '<td>'.$item['count_status_picked'].'</td>'; ?>
-<!--            --><?//= '<td>'.$item['count_status_sorting'].'</td>'; ?>
-<!--            --><?//= '<td>'.$item['count_status_sorted'].'</td>'; ?>
-<!--            --><?//= '<td>'.$item['count_exp'].'</td>'; ?>
-            <?= '<td id="accepted-qty-'.$item['id'].'-'.$item['product_barcode'].'">'.$item['items'].'</td>'; ?>
-        <?= '</tr>'; ?>
+<table class="table">
+    <tr>
+        <th><?= Yii::t('outbound/forms', 'Product Barcode'); ?></th>
+<!--        <th>--><?//= Yii::t('outbound/forms', 'Box Barcode'); ?><!--</th>-->
+        <th><?= Yii::t('outbound/forms', 'Ожидали товаров'); ?></th>
+        <th><?= Yii::t('outbound/forms', 'Приняли товаров'); ?></th>
+    </tr>
+    <tbody id="outbound-item-body">
+    <?php if (!empty($items)) { ?>
+        <?php foreach ($items as $item) { ?>
+            <?= '<tr id="row-' . $item['id'] . '-' . $item['product_barcode'] . '" class="' . ($item['expected_qty'] == $item['accepted_qty'] ? 'alert-success' : 'alert-danger') . '">'; ?>
+<!--            --><?//= '<tr id="row-' . $item['id'] . '-' . $item['product_barcode'] . '" class="' . (!empty($item['box_barcode']) ? 'alert-success' : 'alert-danger') . '">'; ?>
+            <?= '<td>' . $item['product_barcode'] . '</td>'; ?>
+<!--            --><?//= '<td id="box-barcode-' . $item['id'] . '-' . $item['product_barcode'] . '">' . $item['box_barcode'] . '</td>'; ?>
+<!--            --><?//= '<td id="accepted-qty-' . $item['id'] . '-' . $item['product_barcode'] . '">' . $item['items'] . '</td>'; ?>
+            <?= '<td id="accepted-qty-' . $item['id'] . '-' . $item['product_barcode'] . '">' . $item['expected_qty']  . '</td>'; ?>
+            <?= '<td id="accepted-qty-' . $item['id'] . '-' . $item['product_barcode'] . '">' . $item['accepted_qty']  . '</td>'; ?>
+            <?= '</tr>'; ?>
+        <?php } ?>
     <?php } ?>
-<?php } ?>
+    </tbody>
+</table>

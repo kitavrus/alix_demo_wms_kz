@@ -1,8 +1,8 @@
 <?php
 
-namespace stockDepartment\modules\intermode\controllers\ecommerce\stock;
+namespace stockDepartment\modules\alix\controllers\ecommerce\stock;
 
-use stockDepartment\modules\intermode\controllers\ecommerce\stock\domain\entities\EcommerceStockSearch;
+use stockDepartment\modules\alix\controllers\ecommerce\stock\domain\entities\EcommerceStockSearch;
 use stockDepartment\components\Controller;
 use Yii;
 

@@ -204,7 +204,7 @@ class ScanningController extends Controller
 
 			$stock = $model->setScannedStatus();
 			try {
-				// (new InboundScanningService())->sendStatusInWork($model->order_number);
+				(new InboundScanningService())->sendStatusInWork($model->order_number);
 			} catch (\Throwable $e) {
 				Yii::error('sendStatusInWork failed: ' . $e->getMessage(), __METHOD__);
 			}

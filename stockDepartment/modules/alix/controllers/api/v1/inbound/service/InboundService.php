@@ -84,16 +84,21 @@ class InboundService
 
 		$migrateItems = [];
 		foreach ($items as $product) {
+			// Клиент иногда присылает "datamatrix": "" (строка) — нормализуем к массиву,
+			// иначе array_merge ниже и foreach в InboundRepository::createOrderItems упадут.
+			$dm = isset($product["datamatrix"]) && is_array($product["datamatrix"])
+				? $product["datamatrix"]
+				: [];
+
 			if (isset($migrateItems[$product["barcode"]])) {
-				$dm =  isset($product["datamatrix"]) ? $product["datamatrix"] : [];
 				$migrateItems[$product["barcode"]]["quantity"] += $product["quantity"];
 				$migrateItems[$product["barcode"]]["datamatrix"] = array_merge($migrateItems[$product["barcode"]]["datamatrix"],$dm);
 			} else {
 				$migrateItems[$product["barcode"]]["barcode"] = $product["barcode"];
 				$migrateItems[$product["barcode"]]["quantity"] = $product["quantity"];
-				$migrateItems[$product["barcode"]]["article"] = $product["article"];
-				$migrateItems[$product["barcode"]]["guid"] = $product["guid"];
-				$migrateItems[$product["barcode"]]["datamatrix"] = isset($product["datamatrix"]) ? $product["datamatrix"] : [];
+				$migrateItems[$product["barcode"]]["article"] = isset($product["article"]) ? $product["article"] : "";
+				$migrateItems[$product["barcode"]]["guid"] = isset($product["guid"]) ? $product["guid"] : "";
+				$migrateItems[$product["barcode"]]["datamatrix"] = $dm;
 			}
 		}
 

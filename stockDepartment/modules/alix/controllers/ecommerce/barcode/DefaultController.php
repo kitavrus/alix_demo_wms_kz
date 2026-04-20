@@ -1,11 +1,11 @@
 <?php
 
-namespace stockDepartment\modules\intermode\controllers\ecommerce\barcode;
+namespace stockDepartment\modules\alix\controllers\ecommerce\barcode;
 
-use stockDepartment\modules\intermode\controllers\ecommerce\barcode\domain\forms\PrintBarcode;
+use stockDepartment\modules\alix\controllers\ecommerce\barcode\domain\forms\PrintBarcode;
 use Yii;
-use stockDepartment\modules\intermode\controllers\ecommerce\barcode\domain\entities\EcommerceBarcodeManager;
-use stockDepartment\modules\intermode\controllers\ecommerce\barcode\domain\entities\EcommerceBarcodeManagerSerach;
+use stockDepartment\modules\alix\controllers\ecommerce\barcode\domain\entities\EcommerceBarcodeManager;
+use stockDepartment\modules\alix\controllers\ecommerce\barcode\domain\entities\EcommerceBarcodeManagerSerach;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;

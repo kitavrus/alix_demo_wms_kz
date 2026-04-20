@@ -7,55 +7,119 @@ use stockDepartment\modules\kaspi\services\KaspiOrderHydrator;
 /** Моки ответов Kaspi API (useMock). */
 class KaspiMockFactory
 {
-    private static $defaultOrderId = 'orderID';
+    private static $defaultOrderId = 'ODk2ODg0NjEw';
+    private static $defaultEntryId = 'ODk2ODg0NjEwIyMw';
+    private static $defaultCustomerId = 'NzAyNjM4NTcwNQ';
+    // Артикул реального товара для поллинга через cron/kaspi-poll-orders —
+    // должен существовать в product_v2 / ecommerce_stock, иначе импорт упадёт на резерве.
+    private static $defaultProductCode = '1100005012';
+    private static $defaultProductName = 'ЖИДКИЙ КОНСИЛЕР 101 LIGHT IVORY';
+    private static $defaultProductPrice = 4990;
 
     private static function getSampleOrderResource($orderId = null)
     {
         $id = $orderId !== null ? $orderId : self::$defaultOrderId;
 
+        // Всегда свежие таймстемпы, чтобы заказ попадал в окно
+        // OrderImportService::pollWindowHours (по умолчанию 6ч).
+        $nowMs = (int) floor(microtime(true) * 1000);
+
         return [
             'type' => 'orders',
             'id' => $id,
             'attributes' => [
-                'customer' => [
-                    'firstName' => 'Иван Иваныч',
-                    'lastName' => 'Иванов',
-                    'cellPhone' => '7xx0xxxxxx',
-                ],
-                'code' => 'ordercode',
-                'totalPrice' => 96045,
-                'deliveryMode' => 'DELIVERY_PICKUP',
-                'paymentMode' => 'PAY_WITH_CREDIT',
+                'code' => '896884610',
+                'creationDate' => $nowMs,
+                'totalPrice' => self::$defaultProductPrice,
+                'deliveryCostForSeller' => 0,
+                'isKaspiDelivery' => true,
+                'preOrder' => false,
+                'approvedByBankDate' => $nowMs,
                 'signatureRequired' => false,
-                'state' => 'PICKUP',
-                'creationDate' => 1479470446241,
-                'approvedByBankDate' => 1479470451108,
-                'status' => 'ACCEPTED_BY_MERCHANT',
-                'deliveryCost' => 1000,
-                'isImeiRequired' => false,
-                'waybill' => 'https://kaspi.kz/waybills/' . $id . '.pdf',
-                'waybillNumber' => 'WB-' . $id,
+                // Ключевая пара для poll'а: pollAndImportNew() фильтрует
+                // APPROVED_BY_BANK + state=NEW (см. OrderImportService:71-72).
+                'status' => 'APPROVED_BY_BANK',
+                'state' => 'NEW',
+                'pickupPointId' => '30453464_PP1',
+                'deliveryCost' => 500,
+                'customer' => [
+                    'id' => self::$defaultCustomerId,
+                    'name' => 'Нурбек',
+                    'cellPhone' => '7026385705',
+                    'firstName' => 'Нурбек',
+                    'lastName' => 'О',
+                ],
+                'deliveryAddress' => [
+                    'streetName' => null,
+                    'streetNumber' => null,
+                    'town' => 'Шымкент',
+                    'district' => null,
+                    'building' => null,
+                    'apartment' => null,
+                    'formattedAddress' => 'Шымкент, ',
+                    'latitude' => null,
+                    'longitude' => null,
+                ],
+                'originAddress' => [
+                    'id' => 'MzA0NTM0NjRfUFAx',
+                    'displayName' => 'PP1',
+                    'address' => [
+                        'streetName' => 'улица Первомайская Промзона',
+                        'streetNumber' => '282',
+                        'town' => 'г. Алматы',
+                        'district' => null,
+                        'building' => 'Первомайская промышленная зона, 285а/1  склад Nomadex',
+                        'apartment' => null,
+                        'formattedAddress' => 'г. Алматы, улица Первомайская Промзона, 282 (Первомайская промышленная зона, 285а/1  склад Nomadex)',
+                        'latitude' => 43.377010345459,
+                        'longitude' => 76.914489746094,
+                    ],
+                    'city' => [
+                        'id' => 'NzUwMDAwMDAw',
+                        'code' => '750000000',
+                        'name' => 'Алматы',
+                        'active' => true,
+                    ],
+                ],
+                'kaspiDelivery' => [
+                    'waybill' => null,
+                    'courierTransmissionDate' => null,
+                    'courierTransmissionPlanningDate' => $nowMs + 3600 * 1000,
+                    'waybillNumber' => null,
+                    'express' => false,
+                    'returnedToWarehouse' => false,
+                    'firstMileCourier' => null,
+                ],
+                'assembled' => false,
+                'deliveryMode' => 'DELIVERY_PICKUP',
+                'paymentMode' => 'PREPAID',
             ],
             'relationships' => [
                 'entries' => [
+                    'data' => [
+                        [
+                            'id' => self::$defaultEntryId,
+                            'type' => 'orderentries',
+                        ],
+                    ],
                     'links' => [
-                        'self' => "/v2/orders/{$id}/relationships/entries",
-                        'related' => "/v2/orders/{$id}/entries",
+                        'self' => "https://kaspi.kz/shop/api/v2/orders/{$id}/relationships/entries",
+                        'related' => "https://kaspi.kz/shop/api/v2/orders/{$id}/entries",
                     ],
                 ],
                 'user' => [
-                    'links' => [
-                        'self' => "/v2/orders/{$id}/relationships/user",
-                        'related' => "/v2/orders/{$id}/user",
-                    ],
                     'data' => [
+                        'id' => self::$defaultCustomerId,
                         'type' => 'customers',
-                        'id' => 'customerID',
+                    ],
+                    'links' => [
+                        'self' => "https://kaspi.kz/shop/api/v2/orders/{$id}/relationships/user",
+                        'related' => "https://kaspi.kz/shop/api/v2/orders/{$id}/user",
                     ],
                 ],
             ],
             'links' => [
-                'self' => "/v2/orders/{$id}",
+                'self' => "https://kaspi.kz/shop/api/v2/orders/{$id}",
             ],
         ];
     }
@@ -68,21 +132,7 @@ class KaspiMockFactory
             'data' => [
                 self::getSampleOrderResource($orderId),
             ],
-            'included' => [
-                [
-                    'type' => 'customers',
-                    'id' => 'customerID',
-                    'attributes' => [
-                        'firstName' => 'Иван',
-                        'lastName' => 'Иваныч',
-                        'cellPhone' => '7xx0xxxxxx',
-                    ],
-                    'relationships' => [],
-                    'links' => [
-                        'self' => '/v2/customers/customerID',
-                    ],
-                ],
-            ],
+            'included' => [],
             'meta' => [
                 'pageCount' => 1,
                 'totalCount' => 1,
@@ -160,13 +210,12 @@ class KaspiMockFactory
                 'id' => $entryId,
                 'attributes' => [
                     'quantity' => 1,
-                    'basePrice' => 10000,
-                    'totalPrice' => 10000,
-                    'price' => 10000,
-                    'title' => 'Наименование (mock)',
-                    'category' => 'Категория (mock)',
-                    'imei' => '353490123456789',
-                    'productCode' => 'SKU-123',
+                    'basePrice' => self::$defaultProductPrice,
+                    'totalPrice' => self::$defaultProductPrice,
+                    'price' => self::$defaultProductPrice,
+                    'title' => self::$defaultProductName,
+                    'category' => 'Косметика',
+                    'productCode' => self::$defaultProductCode,
                 ],
             ],
             'orderId' => $orderId,
@@ -184,13 +233,13 @@ class KaspiMockFactory
             'data' => [
                 [
                     'type' => 'orderEntries',
-                    'id' => 'entry-1',
+                    'id' => self::$defaultEntryId,
                     'attributes' => [
                         'quantity' => 1,
-                        'basePrice' => 10000,
-                        'totalPrice' => 10000,
-                        'productCode' => 'SKU-123',
-                        'productName' => 'Пример товара',
+                        'basePrice' => self::$defaultProductPrice,
+                        'totalPrice' => self::$defaultProductPrice,
+                        'productCode' => self::$defaultProductCode,
+                        'productName' => self::$defaultProductName,
                     ],
                 ],
             ],

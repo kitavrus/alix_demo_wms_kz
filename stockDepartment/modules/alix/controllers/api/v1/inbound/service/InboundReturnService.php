@@ -82,8 +82,8 @@ class InboundReturnService
 		foreach ($request['items'] as $product) {
 			$itemDto = new AddOrderItemRequestDTO();
 			$itemDto->barcode = $product["barcode"];
-			$itemDto->article = $product["article"];
-			$itemDto->guid = $product["guid"];
+			$itemDto->article = isset($product["article"]) ? $product["article"] : "";
+			$itemDto->guid = isset($product["guid"]) ? $product["guid"] : "";
 			$itemDto->quantity = $product["quantity"];
 
 //			$itemDto->datamatrix = isset($product["datamatrix"]) ? $product["datamatrix"] : [];

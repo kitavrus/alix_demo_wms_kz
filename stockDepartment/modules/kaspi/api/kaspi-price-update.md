@@ -1,5 +1,9 @@
 # POST /kaspi/api/v1/price-update
 
+**Base URL:** `https://alix-demo-wms.nmdx.kz`
+
+Полный URL эндпоинта: `https://alix-demo-wms.nmdx.kz/kaspi/api/v1/price-update`
+
 Принимает новую цену товара (или батч цен) и обрабатывает их:
 
 - если дата активации уже наступила — сразу перегенерирует Excel- и XML-прайс со всеми актуальными ценами;

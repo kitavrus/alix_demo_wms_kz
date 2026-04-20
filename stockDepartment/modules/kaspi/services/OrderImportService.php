@@ -5,10 +5,13 @@ namespace stockDepartment\modules\kaspi\services;
 use common\ecommerce\entities\EcommerceOutbound;
 use common\ecommerce\entities\EcommerceOutboundItem;
 use common\ecommerce\entities\EcommerceStock;
+use common\modules\stock\models\Stock;
+use stockDepartment\modules\alix\controllers\outbound\domain\constants\CourierCompany;
 use stockDepartment\modules\kaspi\dto\OrderDto;
 use stockDepartment\modules\kaspi\enums\OrderStatus;
 use Yii;
 use yii\base\Component;
+use yii\db\Query;
 
 /**
  * Импорт новых заказов из Kaspi (poll cron).
@@ -135,6 +138,8 @@ class OrderImportService extends Component
                 continue;
             }
 
+            $entries = self::resolveArticlesToGuids($entries);
+
             $importResult = $this->importSingleOrder($order, $entries);
 
             if ($importResult['status'] === 'OK') {
@@ -256,9 +261,15 @@ class OrderImportService extends Component
         $outbound->customer_name          = $customerName;
         $outbound->phone_mobile1          = $cellPhone;
         $outbound->total_price            = (string) (float) $order->totalPrice;
-        $outbound->status                 = 0;
+        $outbound->status                 = Stock::STATUS_OUTBOUND_NEW;
         $outbound->api_status             = 0;
         $outbound->external_kaspi_status  = OrderStatus::ORDER_APPROVED_BY_BANK;
+        // OutboundListService::isOrderFromOtherCourierCompany сравнивает это поле
+        // с выбранной в UI курьеркой; без него лист отгрузки отвергнет коробку.
+        $outbound->client_ShipmentSource  = CourierCompany::PONY_EXPRESS_KASPI;
+        // Гейт для ScanningController::actionPackage: transferToCourier (ASSEMBLE)
+        // вызываем только для Kaspi-доставки, иначе Kaspi API ответит 400.
+        $outbound->is_kaspi_delivery      = $order->isKaspiDelivery === true ? 1 : 0;
         $outbound->data_created_on_client = $order->creationDate > 0 ? (int) floor($order->creationDate / 1000) : $now;
         $outbound->created_at             = $now;
         $outbound->updated_at             = $now;
@@ -278,6 +289,10 @@ class OrderImportService extends Component
             $item = new EcommerceOutboundItem();
             $item->outbound_id    = (int) $outbound->id;
             $item->product_sku    = (string) $e['sku'];
+            $item->product_name   = isset($e['product_name'])  ? (string) $e['product_name']  : '';
+            $item->product_brand  = isset($e['product_brand']) ? (string) $e['product_brand'] : '';
+            $item->product_color  = isset($e['product_color']) ? (string) $e['product_color'] : '';
+            $item->product_model  = isset($e['product_model']) ? (string) $e['product_model'] : '';
             $item->expected_qty   = (int) $e['qty'];
             $item->allocated_qty  = 0;
             $item->accepted_qty   = 0;
@@ -293,12 +308,21 @@ class OrderImportService extends Component
     }
 
     /**
-     * Резервирует строки ecommerce_stock под каждый sku из заказа.
+     * Резервирует строки ecommerce_stock под каждый sku из заказа и фиксирует
+     * allocated_qty/status на outbound+items (чтобы pick-flow видел заказ
+     * как FULL_RESERVED и не пытался повторно резервировать).
+     *
      * Возвращает массив недостающих позиций [{sku, needed, available}], пустой если ок.
      */
     private function reserveStock(EcommerceOutbound $outbound, array $entries)
     {
         $missing = [];
+        $itemIdBySku = [];
+        foreach (EcommerceOutboundItem::find()->andWhere(['outbound_id' => (int) $outbound->id])->all() as $it) {
+            $itemIdBySku[(string) $it->product_sku] = (int) $it->id;
+        }
+
+        $totalReserved = 0;
         foreach ($entries as $e) {
             $sku    = (string) $e['sku'];
             $needed = (int) $e['qty'];
@@ -323,17 +347,111 @@ class OrderImportService extends Component
                 continue;
             }
 
-            EcommerceStock::updateAll(
+            $itemId = isset($itemIdBySku[$sku]) ? (int) $itemIdBySku[$sku] : 0;
+
+            $updates = [
+                'outbound_id'         => (int) $outbound->id,
+                'outbound_item_id'    => $itemId,
+                'status_availability' => EcommerceStock::STATUS_AVAILABILITY_RESERVED,
+                'status'              => Stock::STATUS_OUTBOUND_FULL_RESERVED,
+                'kaspi_order_status'  => OrderStatus::ORDER_APPROVED_BY_BANK,
+                'updated_at'          => time(),
+            ];
+            if (!empty($e['product_name']))  { $updates['product_name']  = (string) $e['product_name']; }
+            if (!empty($e['product_brand'])) { $updates['product_brand'] = (string) $e['product_brand']; }
+            if (!empty($e['product_color'])) { $updates['product_color'] = (string) $e['product_color']; }
+            if (!empty($e['product_model'])) { $updates['product_model'] = (string) $e['product_model']; }
+
+            EcommerceStock::updateAll($updates, ['id' => $ids]);
+
+            $totalReserved += count($ids);
+
+            if ($itemId > 0) {
+                EcommerceOutboundItem::updateAll(
+                    [
+                        'allocated_qty' => $needed,
+                        'status'        => Stock::STATUS_OUTBOUND_FULL_RESERVED,
+                        'updated_at'    => time(),
+                    ],
+                    ['id' => $itemId]
+                );
+            }
+        }
+
+        if (empty($missing) && $totalReserved > 0) {
+            EcommerceOutbound::updateAll(
                 [
-                    'outbound_id'         => (int) $outbound->id,
-                    'status_availability' => EcommerceStock::STATUS_AVAILABILITY_RESERVED,
-                    'kaspi_order_status'  => OrderStatus::ORDER_APPROVED_BY_BANK,
+                    'allocated_qty' => $totalReserved,
+                    'status'        => Stock::STATUS_OUTBOUND_FULL_RESERVED,
+                    'updated_at'    => time(),
                 ],
-                ['id' => $ids]
+                ['id' => (int) $outbound->id]
             );
         }
 
         return $missing;
+    }
+
+    /**
+     * Подменить sku-артикулы из Kaspi на GUID товара из product_v2 и обогатить
+     * entry полями товара (product_name/brand/color/model) — чтобы pick-list PDF
+     * и EcommerceOutboundItem получили корректные данные, а не пустоту.
+     *
+     * Если товара нет в product_v2 — sku остаётся как есть, поля остаются пустыми.
+     *
+     * @param array $entries [{sku, qty, price}, ...]
+     * @return array каждый entry: {sku, qty, price, product_name, product_brand, product_color, product_model}
+     */
+    public static function resolveArticlesToGuids(array $entries)
+    {
+        if (empty($entries)) {
+            return $entries;
+        }
+
+        $skus = [];
+        foreach ($entries as $e) {
+            $skus[] = (string) $e['sku'];
+        }
+        $skus = array_values(array_unique(array_filter($skus, function ($v) {
+            return $v !== '';
+        })));
+        if (empty($skus)) {
+            return $entries;
+        }
+
+        $rows = (new Query())
+            ->select(['article', 'guid', 'name', 'brand', 'color_name'])
+            ->from('product_v2')
+            ->andWhere(['or', ['article' => $skus], ['guid' => $skus]])
+            ->andWhere(['deleted' => 0])
+            ->all();
+
+        $byArticle = [];
+        $byGuid = [];
+        foreach ($rows as $row) {
+            $byArticle[(string) $row['article']] = $row;
+            $byGuid[(string) $row['guid']] = $row;
+        }
+
+        foreach ($entries as &$e) {
+            $raw  = (string) $e['sku'];
+            $info = isset($byArticle[$raw]) ? $byArticle[$raw] : (isset($byGuid[$raw]) ? $byGuid[$raw] : null);
+            if ($info !== null) {
+                $e['sku']           = (string) $info['guid'];
+                $e['product_name']  = (string) $info['name'];
+                $e['product_brand'] = (string) $info['brand'];
+                $e['product_color'] = (string) $info['color_name'];
+                $e['product_model'] = (string) $info['article'];
+            } else {
+                $e['product_name']  = isset($e['product_name'])  ? $e['product_name']  : '';
+                $e['product_brand'] = isset($e['product_brand']) ? $e['product_brand'] : '';
+                $e['product_color'] = isset($e['product_color']) ? $e['product_color'] : '';
+                $e['product_model'] = isset($e['product_model']) ? $e['product_model'] : '';
+            }
+        }
+        unset($e);
+
+        return $entries;
     }
 
     /**

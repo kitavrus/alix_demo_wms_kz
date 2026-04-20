@@ -164,21 +164,26 @@ class PriceService extends Component
             $priceList = $this->priceListService->buildCurrentPriceList();
             $this->priceListService->generateFromRows($priceList);
 
-            // Собираем SKU товаров, которые реально попали в Excel
-            $inExcel = [];
+            // Маппинг sku → qty из получившегося прайса,
+            // чтобы отличить applied-со-стоком (qty>0) от preload (qty=0).
+            $excelQty = [];
             foreach ($priceList as $row) {
-                $inExcel[] = $row['sku'];
+                $excelQty[$row['sku']] = (int) $row['qty'];
             }
 
-            // Сверяем с тем, что пришло в запросе
-            $applied = [];
-            $notInStock = [];
+            $applied    = [];
+            $preloaded  = [];
+            $notApplied = [];
             foreach ($immediate as $record) {
                 $sku = !empty($record->article) ? $record->article : $record->product_guid;
-                if (in_array($sku, $inExcel)) {
-                    $applied[] = $sku;
-                } else {
-                    $notInStock[] = $sku;
+                if (!array_key_exists($sku, $excelQty)) {
+                    // Не попал в прайс — скорее всего нет карточки в product_v2
+                    $notApplied[] = $sku;
+                    continue;
+                }
+                $applied[] = $sku;
+                if ($excelQty[$sku] === 0) {
+                    $preloaded[] = $sku;
                 }
             }
 
@@ -191,8 +196,11 @@ class PriceService extends Component
                 'download_url_xml'  => '/kaspi/api/v1/price-list-download-xml',
                 'public_xml_url'    => '/kaspi-price-list.xml',
             ];
-            if (!empty($notInStock)) {
-                $response['not_in_stock'] = $notInStock;
+            if (!empty($preloaded)) {
+                $response['preloaded'] = $preloaded;
+            }
+            if (!empty($notApplied)) {
+                $response['not_applied'] = $notApplied;
             }
             if (!empty($scheduled)) {
                 $response['scheduled'] = array_map(function ($s) {

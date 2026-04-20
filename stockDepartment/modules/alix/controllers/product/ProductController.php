@@ -2,7 +2,7 @@
 
 namespace stockDepartment\modules\alix\controllers\product;
 
-use stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\OutboundService;
+use stockDepartment\modules\alix\controllers\outbound\domain\OutboundService;
 use stockDepartment\modules\alix\controllers\product\domains\dto\Filter;
 use stockDepartment\modules\alix\controllers\product\domains\ProductService;
 use stockDepartment\components\Controller;

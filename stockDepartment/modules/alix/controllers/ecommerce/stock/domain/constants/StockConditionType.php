@@ -1,5 +1,5 @@
 <?php
-namespace stockDepartment\modules\intermode\controllers\ecommerce\stock\domain\constants;
+namespace stockDepartment\modules\alix\controllers\ecommerce\stock\domain\constants;
 
 
 use yii\helpers\ArrayHelper;

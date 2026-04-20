@@ -9,7 +9,9 @@ class ScanOutboundFormAsset extends AssetBundle
     public $baseUrl = '@web';
 
     public $js = [
-        'js/e-commerce/alix/scan-outbound-form.js',
+        // JS лежит в defacto/, форма alix использует те же ID полей и #outboundform,
+        // URL-ы ручек берутся из data-url на input'ах — скрипт универсальный.
+        'js/e-commerce/defacto/scan-outbound-form.js',
     ];
 
     public $jsOptions = [

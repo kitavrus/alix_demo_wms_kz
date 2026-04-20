@@ -25,6 +25,7 @@ class InboundController extends Controller
     public function actionOrders()
     {
 		$request = Yii::$app->getRequest()->getBodyParams();
+		$request = $this->normalizeUuidKey($request);
 
 //		VarDumper::dump($request,10,true);
 //		die;
@@ -74,6 +75,7 @@ class InboundController extends Controller
 	public function actionReturns()
 	{
 		$request = Yii::$app->getRequest()->getBodyParams();
+		$request = $this->normalizeUuidKey($request);
 
 //		VarDumper::dump($request,10,true);
 //		die;
@@ -130,5 +132,17 @@ class InboundController extends Controller
 		$result = [];
 		$result['echo'] = $value;
 		return $this->asJson(["response"=>$result]);
+	}
+
+	/**
+	 * Принимаем ключ uuid и с кириллической «с» ("1с_uuid"), и с латинской c ("1c_uuid").
+	 * Визуально ключи одинаковые, клиенты регулярно путают — нормализуем на входе.
+	 */
+	private function normalizeUuidKey(array $request)
+	{
+		if (!isset($request['1с_uuid']) && isset($request['1c_uuid'])) {
+			$request['1с_uuid'] = $request['1c_uuid'];
+		}
+		return $request;
 	}
 }
