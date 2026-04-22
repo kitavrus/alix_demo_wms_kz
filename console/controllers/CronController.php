@@ -7,7 +7,10 @@
  */
 namespace console\controllers;
 use stockDepartment\modules\kaspi\services\Alix1CApiService;
+use stockDepartment\modules\kaspi\services\OneCSalesSyncService;
+use stockDepartment\modules\kaspi\services\OrderImportService;
 use stockDepartment\modules\kaspi\services\OrderReturnService;
+use stockDepartment\modules\kaspi\services\OrderStatusSyncService;
 use stockDepartment\modules\kaspi\services\PriceService;
 use stockDepartment\modules\kaspi\services\ProductSyncService;
 use common\modules\billing\models\TlDeliveryProposalBilling;
@@ -408,9 +411,336 @@ class CronController extends Controller
 
         $result = $priceService->activatePendingPrices();
 
-        echo "Kaspi price activation: sent={$result['sent']}, errors={$result['errors']}, total={$result['total']}\n";
+        $status    = isset($result['status'])    ? (string) $result['status']    : 'unknown';
+        $activated = isset($result['activated']) ? (int)    $result['activated'] : 0;
+        $errors    = isset($result['errors'])    ? (int)    $result['errors']    : 0;
+        $file      = isset($result['excel_file']) ? (string) $result['excel_file'] : '';
 
-        return $result['errors'] > 0 ? 1 : 0;
+        echo "Kaspi price activation: status={$status}, activated={$activated}, errors={$errors}"
+            . ($file !== '' ? ", excel={$file}" : '') . "\n";
+
+        return $errors > 0 ? 1 : 0;
+    }
+
+    /**
+     * Опросить Kaspi на новые подтверждённые заказы (APPROVED_BY_BANK, state=NEW)
+     * и импортировать их в EcommerceOutbound + зарезервировать сток.
+     *
+     * Окно poll — последние orderPollWindowHours часов (по умолчанию 6).
+     * Идемпотентно по external_order_number.
+     * Рекомендуемое расписание: каждые 15 минут.
+     *
+     * php yii cron/kaspi-poll-orders
+     */
+    public function actionKaspiPollOrders()
+    {
+        $module = Yii::$app->getModule('kaspi');
+        /** @var OrderImportService $service */
+        $service = $module !== null ? $module->get('orderImportService') : null;
+        if (!$service instanceof OrderImportService) {
+            $service = new OrderImportService();
+            $service->init();
+        }
+
+        $result = $service->pollAndImportNew();
+
+        $fetched   = isset($result['fetched']) ? (int) $result['fetched'] : 0;
+        $imported  = isset($result['imported']) ? (int) $result['imported'] : 0;
+        $skipped   = isset($result['skipped_existing']) ? (int) $result['skipped_existing'] : 0;
+        $noStock   = isset($result['failed_no_stock']) ? (int) $result['failed_no_stock'] : 0;
+        $errors    = isset($result['errors']) ? (int) $result['errors'] : 0;
+        $status    = isset($result['status']) ? (string) $result['status'] : 'unknown';
+
+        echo "Kaspi order poll: status={$status}, fetched={$fetched}, imported={$imported}, "
+            . "skipped_existing={$skipped}, no_stock={$noStock}, errors={$errors}\n";
+
+        return ($status === 'OK' && $errors === 0) ? 0 : 1;
+    }
+
+    /**
+     * Ретро-импорт одиночного Kaspi-заказа по его orderId.
+     *
+     * Используется когда штатный poll пропустил заказ (например, заказ уже ушёл
+     * из APPROVED_BY_BANK/NEW — Kaspi принял его автоматически по таймауту, либо
+     * merchant принял в кабинете). Тянет сам заказ и его entries через Kaspi API,
+     * создаёт EcommerceOutbound + items, резервирует сток в ecommerce_stock —
+     * **без** повторного вызова acceptOrder (заказ уже принят в Kaspi).
+     *
+     * php yii cron/kaspi-import-order ODk2ODg0NjEw
+     * php yii cron/kaspi-import-order ODk2ODg0NjEw KASPI_DELIVERY
+     */
+    public function actionKaspiImportOrder($orderId, $markStatus = \stockDepartment\modules\kaspi\enums\OrderStatus::ORDER_ACCEPTED_BY_MERCHANT)
+    {
+        $orderId = trim((string) $orderId);
+        if ($orderId === '') {
+            echo "orderId is required\n";
+            return 1;
+        }
+
+        $module = Yii::$app->getModule('kaspi');
+        /** @var \stockDepartment\modules\kaspi\services\KaspiAPIService $api */
+        $api = $module !== null ? $module->get('apiService') : null;
+        if ($api === null) {
+            echo "kaspi module/apiService not available\n";
+            return 1;
+        }
+
+        $existing = \common\ecommerce\entities\EcommerceOutbound::find()
+            ->andWhere(['external_order_number' => $orderId])
+            ->andWhere(['deleted' => 0])
+            ->one();
+        if ($existing !== null) {
+            echo "Order {$orderId} already imported: outbound id={$existing->id}\n";
+            return 0;
+        }
+
+        try {
+            $orderDto = $api->getOrderById($orderId);
+        } catch (\Exception $e) {
+            echo "Kaspi getOrderById failed: " . $e->getMessage() . "\n";
+            return 1;
+        }
+        if ($orderDto === null) {
+            echo "Kaspi order not found: {$orderId}\n";
+            return 1;
+        }
+
+        try {
+            $entriesResponse = $api->getOrderEntries($orderId);
+        } catch (\Exception $e) {
+            echo "Kaspi getOrderEntries failed: " . $e->getMessage() . "\n";
+            return 1;
+        }
+
+        $entries = [];
+        $data = isset($entriesResponse['data']) && is_array($entriesResponse['data']) ? $entriesResponse['data'] : [];
+        foreach ($data as $row) {
+            $attrs = isset($row['attributes']) && is_array($row['attributes']) ? $row['attributes'] : [];
+            $sku = '';
+            if (isset($attrs['offer']['code'])) {
+                $sku = (string) $attrs['offer']['code'];
+            } elseif (isset($attrs['merchantProductCode'])) {
+                $sku = (string) $attrs['merchantProductCode'];
+            } elseif (isset($attrs['productCode'])) {
+                $sku = (string) $attrs['productCode'];
+            }
+            $qty = isset($attrs['quantity']) ? (int) $attrs['quantity'] : 0;
+            if ($sku === '' || $qty <= 0) {
+                continue;
+            }
+            $price = 0.0;
+            if (isset($attrs['basePrice'])) {
+                $price = (float) $attrs['basePrice'];
+            } elseif (isset($attrs['totalPrice']) && $qty > 0) {
+                $price = (float) $attrs['totalPrice'] / $qty;
+            }
+            $entries[] = ['sku' => $sku, 'qty' => $qty, 'price' => $price];
+        }
+
+        if (empty($entries)) {
+            echo "Order {$orderId} has no entries\n";
+            return 1;
+        }
+
+        $entries = OrderImportService::resolveArticlesToGuids($entries);
+
+        $clientId = (int) (isset($module->kaspiClientId) ? $module->kaspiClientId : 0);
+        $now = time();
+        $expectedQty = 0;
+        foreach ($entries as $e) {
+            $expectedQty += (int) $e['qty'];
+        }
+
+        $customerName = '';
+        $cellPhone = '';
+        if ($orderDto->customer !== null) {
+            $customerName = trim(((string) $orderDto->customer->firstName) . ' ' . ((string) $orderDto->customer->lastName));
+            $cellPhone = (string) $orderDto->customer->cellPhone;
+        }
+
+        $transaction = Yii::$app->db->beginTransaction();
+        try {
+            $outbound = new \common\ecommerce\entities\EcommerceOutbound();
+            $outbound->client_id              = $clientId;
+            $outbound->order_number           = 'KASPI-' . substr($orderId, 0, 30);
+            $outbound->external_order_number  = $orderId;
+            $outbound->expected_qty           = $expectedQty;
+            $outbound->customer_name          = $customerName;
+            $outbound->phone_mobile1          = $cellPhone;
+            $outbound->total_price            = (string) (float) $orderDto->totalPrice;
+            $outbound->status                 = \common\modules\stock\models\Stock::STATUS_OUTBOUND_NEW;
+            $outbound->api_status             = 0;
+            $outbound->external_kaspi_status  = (string) $markStatus;
+            $outbound->data_created_on_client = $orderDto->creationDate > 0 ? (int) floor($orderDto->creationDate / 1000) : $now;
+            $outbound->created_at             = $now;
+            $outbound->updated_at             = $now;
+            $outbound->deleted                = 0;
+            if (!$outbound->save(false)) {
+                throw new \RuntimeException('Failed to save EcommerceOutbound');
+            }
+
+            foreach ($entries as $e) {
+                $item = new \common\ecommerce\entities\EcommerceOutboundItem();
+                $item->outbound_id    = (int) $outbound->id;
+                $item->product_sku    = (string) $e['sku'];
+                $item->product_name   = isset($e['product_name'])  ? (string) $e['product_name']  : '';
+                $item->product_brand  = isset($e['product_brand']) ? (string) $e['product_brand'] : '';
+                $item->product_color  = isset($e['product_color']) ? (string) $e['product_color'] : '';
+                $item->product_model  = isset($e['product_model']) ? (string) $e['product_model'] : '';
+                $item->expected_qty   = (int) $e['qty'];
+                $item->allocated_qty  = 0;
+                $item->accepted_qty   = 0;
+                $item->status         = 0;
+                $item->product_price  = (string) (float) $e['price'];
+                $item->created_at     = $now;
+                $item->updated_at     = $now;
+                $item->deleted        = 0;
+                if (!$item->save(false)) {
+                    throw new \RuntimeException('Failed to save EcommerceOutboundItem for sku ' . $e['sku']);
+                }
+            }
+
+            $missing = [];
+            $itemIdBySku = [];
+            foreach (\common\ecommerce\entities\EcommerceOutboundItem::find()->andWhere(['outbound_id' => (int) $outbound->id])->all() as $it) {
+                $itemIdBySku[(string) $it->product_sku] = (int) $it->id;
+            }
+
+            $totalReserved = 0;
+            foreach ($entries as $e) {
+                $sku    = (string) $e['sku'];
+                $needed = (int) $e['qty'];
+                if ($sku === '' || $needed <= 0) {
+                    continue;
+                }
+                $ids = \common\ecommerce\entities\EcommerceStock::find()
+                    ->select('id')
+                    ->andWhere(['product_sku' => $sku])
+                    ->andWhere(['status_availability' => \common\ecommerce\entities\EcommerceStock::STATUS_AVAILABILITY_YES])
+                    ->andWhere(['deleted' => 0])
+                    ->limit($needed)
+                    ->column();
+                if (count($ids) < $needed) {
+                    $missing[] = ['sku' => $sku, 'needed' => $needed, 'available' => count($ids)];
+                    continue;
+                }
+
+                $itemId = isset($itemIdBySku[$sku]) ? (int) $itemIdBySku[$sku] : 0;
+
+                $updates = [
+                    'outbound_id'         => (int) $outbound->id,
+                    'outbound_item_id'    => $itemId,
+                    'status_availability' => \common\ecommerce\entities\EcommerceStock::STATUS_AVAILABILITY_RESERVED,
+                    'status'              => \common\modules\stock\models\Stock::STATUS_OUTBOUND_FULL_RESERVED,
+                    'kaspi_order_status'  => (string) $markStatus,
+                    'updated_at'          => $now,
+                ];
+                if (!empty($e['product_name']))  { $updates['product_name']  = (string) $e['product_name']; }
+                if (!empty($e['product_brand'])) { $updates['product_brand'] = (string) $e['product_brand']; }
+                if (!empty($e['product_color'])) { $updates['product_color'] = (string) $e['product_color']; }
+                if (!empty($e['product_model'])) { $updates['product_model'] = (string) $e['product_model']; }
+
+                \common\ecommerce\entities\EcommerceStock::updateAll($updates, ['id' => $ids]);
+
+                $totalReserved += count($ids);
+
+                if ($itemId > 0) {
+                    \common\ecommerce\entities\EcommerceOutboundItem::updateAll(
+                        [
+                            'allocated_qty' => $needed,
+                            'status'        => \common\modules\stock\models\Stock::STATUS_OUTBOUND_FULL_RESERVED,
+                            'updated_at'    => $now,
+                        ],
+                        ['id' => $itemId]
+                    );
+                }
+            }
+
+            if (!empty($missing)) {
+                $transaction->rollBack();
+                echo "No stock for order {$orderId}: " . json_encode($missing, JSON_UNESCAPED_UNICODE) . "\n";
+                return 1;
+            }
+
+            if ($totalReserved > 0) {
+                \common\ecommerce\entities\EcommerceOutbound::updateAll(
+                    [
+                        'allocated_qty' => $totalReserved,
+                        'status'        => \common\modules\stock\models\Stock::STATUS_OUTBOUND_FULL_RESERVED,
+                        'updated_at'    => $now,
+                    ],
+                    ['id' => (int) $outbound->id]
+                );
+            }
+
+            $transaction->commit();
+            echo "Imported Kaspi order {$orderId}: outbound id={$outbound->id}, external_kaspi_status={$markStatus}, items=" . count($entries) . ", reserved_qty={$expectedQty}\n";
+            return 0;
+        } catch (\Exception $e) {
+            $transaction->rollBack();
+            echo "Import transaction failed: " . $e->getMessage() . "\n";
+            return 1;
+        }
+    }
+
+    /**
+     * Синхронизировать статусы активных Kaspi-заказов: обновить external_kaspi_status,
+     * снять резерв на CANCELLING/CANCELLED, пометить COMPLETED как PENDING для 1С.
+     * Рекомендуемое расписание: каждые 15 минут.
+     *
+     * php yii cron/kaspi-sync-order-statuses
+     */
+    public function actionKaspiSyncOrderStatuses()
+    {
+        $module = Yii::$app->getModule('kaspi');
+        /** @var OrderStatusSyncService $service */
+        $service = $module !== null ? $module->get('orderStatusSyncService') : null;
+        if (!$service instanceof OrderStatusSyncService) {
+            $service = new OrderStatusSyncService();
+            $service->init();
+        }
+
+        $result = $service->syncActiveOrders();
+
+        $checked   = isset($result['checked']) ? (int) $result['checked'] : 0;
+        $cancelled = isset($result['cancelled']) ? (int) $result['cancelled'] : 0;
+        $completed = isset($result['completed']) ? (int) $result['completed'] : 0;
+        $errors    = isset($result['errors']) ? (int) $result['errors'] : 0;
+        $status    = isset($result['status']) ? (string) $result['status'] : 'unknown';
+
+        echo "Kaspi order status sync: status={$status}, checked={$checked}, "
+            . "cancelled={$cancelled}, completed={$completed}, errors={$errors}\n";
+
+        return ($status === 'OK' && $errors === 0) ? 0 : 1;
+    }
+
+    /**
+     * Передать выполненные Kaspi-заказы в 1С (one_c_status=PENDING → SENT/ERROR).
+     * Сейчас 1С endpoint — заглушка в Alix1CApiService::postSale.
+     * Рекомендуемое расписание: каждые 30 минут.
+     *
+     * php yii cron/kaspi-sync-completed-to-1c
+     */
+    public function actionKaspiSyncCompletedTo1c()
+    {
+        $module = Yii::$app->getModule('kaspi');
+        /** @var OneCSalesSyncService $service */
+        $service = $module !== null ? $module->get('oneCSalesSyncService') : null;
+        if (!$service instanceof OneCSalesSyncService) {
+            $service = new OneCSalesSyncService();
+            $service->init();
+        }
+
+        $result = $service->syncPendingSales();
+
+        $picked = isset($result['picked']) ? (int) $result['picked'] : 0;
+        $sent   = isset($result['sent']) ? (int) $result['sent'] : 0;
+        $errors = isset($result['errors']) ? (int) $result['errors'] : 0;
+        $status = isset($result['status']) ? (string) $result['status'] : 'unknown';
+
+        echo "Kaspi -> 1C sales sync: status={$status}, picked={$picked}, sent={$sent}, errors={$errors}\n";
+
+        return ($status === 'OK' && $errors === 0) ? 0 : 1;
     }
 
     /**

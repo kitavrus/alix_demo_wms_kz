@@ -1,7 +1,7 @@
 <?php
-namespace stockDepartment\modules\intermode\controllers\ecommerce\employee\domain\service;
+namespace stockDepartment\modules\alix\controllers\ecommerce\employee\domain\service;
 
-use stockDepartment\modules\intermode\controllers\ecommerce\employee\domain\repository\EmployeeRepository;
+use stockDepartment\modules\alix\controllers\ecommerce\employee\domain\repository\EmployeeRepository;
 
 class EmployeeService
 {

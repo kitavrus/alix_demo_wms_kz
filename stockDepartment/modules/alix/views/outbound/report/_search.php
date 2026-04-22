@@ -1,102 +1,117 @@
 <?php
-
 use yii\helpers\Html;
 use yii\widgets\ActiveForm;
 use kartik\daterange\DateRangePicker;
 use kartik\select2\Select2;
-use common\modules\client\models\Client;
-use yii\helpers\ArrayHelper;
+use stockDepartment\modules\alix\controllers\outbound\domain\constants\OutboundStatus;
 
 /* @var $this yii\web\View */
-/* @var $model stockDepartment\modules\kpiSettings\models\KpiSettingSearch */
+/* @var $model common\ecommerce\entities\EcommerceOutboundSearch */
 /* @var $form yii\widgets\ActiveForm */
 ?>
 
-<div class="outbound-orders-grid-search">
+<div class="ecommerce-outbound-search">
 
-<?php $form = ActiveForm::begin([
-    'method' => 'get',
-    'id' => 'outbound-orders-grid-search-form',
-]); ?>
+    <?php $form = ActiveForm::begin([
+        'id' => 'outbound-order-search-form',
+        'action' => ['index'],
+        'method' => 'get',
+    ]); ?>
 
-<table class="table" width="100%" cellspacing="10">
-    <tr>
-        <td width="10%">
-            <?= $form->field($model, 'client_id')->dropDownList($clientsArray,['prompt' =>Yii::t('transportLogistics/titles', 'Select client')]) ?>
-        </td>
-        <td width="10%">
-            <?= $form->field($model, 'parent_order_number')->label(Yii::t('outbound/forms', 'Parent order number')) ?>
-        </td>
-        <td width="10%">
-            <?= $form->field($model, 'order_number')->label(Yii::t('outbound/forms', 'Order number')) ?>
-        </td>
-        <td width="10%">
-            <?= $form->field($model, 'packing_date')->widget(DateRangePicker::className(),
-                [
-                    'convertFormat'=>true,
-                    'pluginOptions'=>[
-                        'locale'=>[
-                            'separator'=> ' / ',
-                            'format'=>'Y-m-d',
+    <table class="table" width="100%" cellspacing="10">
+        <tr>
+            <td width="10%">
+                <?= $form->field($model, 'order_number')->label(Yii::t('outbound/forms', 'Order number')) ?>
+            </td>
+<!--            <td width="10%">-->
+<!--                --><?//= $form->field($model, 'client_ReferenceNumber')->label(Yii::t('outbound/forms', 'ТТН')); ?>
+<!--            </td>-->
+            <td width="10%">
+                <?= $form->field($model, 'packing_date')->widget(DateRangePicker::className(),
+                    [
+                        'convertFormat'=>true,
+                        'pluginOptions'=>[
+                            'locale'=>[
+                                'separator'=> ' / ',
+                                'format'=>'Y-m-d',
+                            ]
                         ]
                     ]
-                ]
-            ) ?>
-        </td>
-        <td width="10%">
-            <?= $form->field($model, 'created_at')->widget(DateRangePicker::className(),
-                [
-                    'convertFormat'=>true,
-                    'pluginOptions'=>[
-                        'locale'=>[
-                            'separator'=> ' / ',
-                            'format'=>'Y-m-d',
+                ) ?>
+            </td>
+            <td width="10%">
+                <?= $form->field($model, 'created_at')->widget(DateRangePicker::className(),
+                    [
+                        'convertFormat'=>true,
+                        'pluginOptions'=>[
+                            'locale'=>[
+                                'separator'=> ' / ',
+                                'format'=>'Y-m-d',
+                            ]
                         ]
                     ]
-                ]
-            ) ?>
-        </td>
+                ) ?>
+            </td>
+	        <td width="10%">
+				<?= $form->field($model, 'date_left_warehouse')->widget(DateRangePicker::className(),
+					[
+						'convertFormat'=>true,
+						'pluginOptions'=>[
+							'locale'=>[
+								'separator'=> ' / ',
+								'format'=>'Y-m-d',
+							]
+						]
+					]
+				) ?>
+	        </td>
+<!--            <td width="10%">-->
+<!--                --><?//= $form->field($model, 'updated_at')->widget(DateRangePicker::className(),
+//                    [
+//                        'convertFormat'=>true,
+//                        'pluginOptions'=>[
+//                            'locale'=>[
+//                                'separator'=> ' / ',
+//                                'format'=>'Y-m-d',
+//                            ]
+//                        ]
+//                    ]
+//                ) ?>
+<!--            </td>-->
+<!--            <td width="10%">-->
+<!--                --><?//= $form->field($model, 'client_ShipmentSource')->dropDownList(\common\ecommerce\constants\OutboundShipmentSource::getAll(), ['prompt'=>'Выберите статус']) ?>
+<!--            </td>-->
+        </tr>
+        <tr>
 
-    </tr>
-    <tr>
-        <td width="10%">
-            <?= $form->field($model, 'date_left_warehouse')->widget(DateRangePicker::className(),
-                [
-                    'convertFormat'=>true,
-                    'pluginOptions'=>[
-                        'locale'=>[
-                            'separator'=> ' / ',
-                            'format'=>'Y-m-d',
-                        ]
-                    ]
-                ]
-            ) ?>
-        </td>
-        <td width="10%">
-            <?= $form->field($model, 'to_point_id')->widget(Select2::className(),
-                [
-                    'data' => $clientStoreArray,
-                    'options' => [
-                        'placeholder' => Yii::t('transportLogistics/forms', 'Select')
-                    ],
-                ]
-            ) ?>
-        </td>
-        <td width="10%">
-            <?= $form->field($model, 'status')->dropDownList($model->getStatusArray(), ['prompt'=>'Выберите статус']) ?>
-        </td>
-        <td width="10%">
-            <?= $form->field($model, 'product_barcode')->label('Продукт штрих-код') ?>
-        </td>
-        <td width="10%">
-            &nbsp;
-        </td>
-    </tr>
-</table>
 
-<div class="form-group">
-    <?= Html::submitButton(Yii::t('buttons', 'Search'), ['class' => 'btn btn-primary']) ?>
-    <?= Html::a(Yii::t('buttons', 'Очистить поиск'), 'index', ['class' => 'btn btn-warning']) ?>
-</div>
-<?php ActiveForm::end(); ?>
+            <td width="10%">
+                <?= $form->field($model, 'status')->dropDownList(OutboundStatus::getAll(), ['prompt'=>'Выберите статус']) ?>
+            </td>
+            <td width="10%">
+                <?= $form->field($model, 'productBarcode')->label('Продукт штрих-код') ?>
+            </td>
+<!--            <td width="10%">-->
+<!--                --><?//= $form->field($model, 'id')->label(Yii::t('outbound/forms', 'Id')) ?>
+<!--            </td>-->
+            <td width="10%">
+                <?= $form->field($model, 'outboundBoxBarcode')->label(Yii::t('outbound/forms', 'Шк короба отгрузки')) ?>
+            </td>
+
+            <td width="10%">
+                <?= $form->field($model, 'findType')->dropDownList(\common\ecommerce\entities\EcommerceOutboundSearch::findTypeList(), ['prompt'=>'Выберите ...'])->label(Yii::t('outbound/forms', 'Тип поиска')) ?>
+            </td>
+        </tr>
+		<tr>
+			<td width="10%">
+				<?= $form->field($model, 'productArticle')->label(Yii::t('outbound/forms', 'Article')) ?>
+			</td>
+        </tr>
+    </table>
+
+    <div class="form-group">
+        <?= Html::submitButton(Yii::t('buttons', 'Search'), ['class' => 'btn btn-primary']) ?>
+        <?= Html::a(Yii::t('buttons', 'Очистить поиск'), 'index', ['class' => 'btn btn-warning']) ?>
+    </div>
+    <?php ActiveForm::end(); ?>
 </div>

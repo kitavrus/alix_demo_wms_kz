@@ -124,24 +124,52 @@ class ProductService
 		return $p;
 	}
 
-	public function getProductIdByBarcode($barcode) {
-		return $this->repository->getProductIdByBarcode($barcode);
-	}
-	
-	public function getGuidIdByBarcode($barcode) {
-		$product = $this->repository->getProductByBarcode($barcode);
-		if ($product) {
-			return $product->client_product_id;
+	/**
+	 * Резолвит карточку ProductV2 по приоритету: guid -> barcode -> article.
+	 *
+	 * Возвращает ту же структуру stdClass { product, barcodes }, что и getByGuid.
+	 * Если ни по одному ключу не нашли — product будет пустым ProductV2.
+	 *
+	 * @param string|null $guid
+	 * @param string|null $barcode
+	 * @param string|null $article
+	 * @return \stdClass
+	 */
+	public function resolveByGuidOrBarcodeOrArticle($guid, $barcode, $article) {
+		$product = null;
+		if (!empty($guid)) {
+			$product = $this->repository->getByGuid($guid);
 		}
-		return -1;
+		if (empty($product) && !empty($barcode)) {
+			$product = $this->repository->getByBarcodeV2($barcode);
+		}
+		if (empty($product) && !empty($article)) {
+			$product = $this->repository->getByArticle($article);
+		}
+
+		$p = new \stdClass();
+		if (!empty($product)) {
+			$p->product = $product;
+			$p->barcodes = $this->repository->getBarcodesById($product->id);
+		} else {
+			$p->product = new ProductV2();
+			$p->barcodes = [];
+		}
+		return $p;
+	}
+
+	public function getProductIdByBarcode($barcode) {
+		$product = $this->repository->getByBarcodeV2($barcode);
+		return $product ? (int) $product->id : -1;
+	}
+
+	public function getGuidIdByBarcode($barcode) {
+		$product = $this->repository->getByBarcodeV2($barcode);
+		return $product ? (string) $product->guid : -1;
 	}
 
 	public function getLastGuidIdByBarcode($barcode) {
-		$product = $this->repository->getLastProductByBarcode($barcode);
-		if ($product) {
-			return $product->client_product_id;
-		}
-		return -1;
+		return $this->getGuidIdByBarcode($barcode);
 	}
 
 	public function getProductInfoByBarcode($barcode) {

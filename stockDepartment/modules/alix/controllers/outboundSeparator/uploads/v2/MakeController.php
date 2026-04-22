@@ -18,7 +18,7 @@ class MakeController extends Controller
 {
 	public function actionIndex()
 	{
-		// /alix/outboundSeparator/uploads/v2/form/index
+		// /alix/ecommerce/outboundSeparator/uploads/v2/form/index
 		$model = new UploadForm();
 		$order = new \stdClass();
 		$order->totalQtyRows = 0;
@@ -188,7 +188,7 @@ class MakeController extends Controller
 
 	public function actionIndex2()
 	{
-		// /alix/outboundSeparator/uploads/v2/form/index2
+		// /alix/ecommerce/outboundSeparator/uploads/v2/form/index2
 		$model = new UploadForm();
 		$order = new \stdClass();
 		$order->totalQtyRows = 0;

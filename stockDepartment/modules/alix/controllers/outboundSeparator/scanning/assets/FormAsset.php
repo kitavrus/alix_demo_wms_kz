@@ -14,7 +14,7 @@ class FormAsset extends AssetBundle
 	public $baseUrl = '@web';
 
 	public $js = [
-		'js/alix/outbound_separator/scanning/form-v1.js',
+		'js/alix/ecommerce/outbound_separator/scanning/form-v1.js',
 	];
 
 	public $depends = [

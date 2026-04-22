@@ -36,7 +36,6 @@ class KaspiConstants
 
     const ORDERS_ENDPOINT = 'orders';
     const ORDER_ENTRY_SUBPATH = 'entries';
-    const ORDER_WAYBILL_SUBPATH = 'waybill';
 
     // --- Alix 1C items API (мастер-данные номенклатуры) ---
     const ALIX_1C_BASE_URL = 'http://185.249.195.105/DEV_KZ_RETAIL/hs/NMDX/';

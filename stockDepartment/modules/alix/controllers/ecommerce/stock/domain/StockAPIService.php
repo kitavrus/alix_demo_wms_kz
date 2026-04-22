@@ -1,5 +1,5 @@
 <?php
-namespace stockDepartment\modules\intermode\controllers\ecommerce\stock\domain;
+namespace stockDepartment\modules\alix\controllers\ecommerce\stock\domain;
 
 
 //use common\ecommerce\intermode\api\service\EcommerceAPILogService;

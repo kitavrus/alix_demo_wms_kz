@@ -1,6 +1,6 @@
 <?php
 
-namespace stockDepartment\modules\intermode\controllers\ecommerce\barcode\domain\entities;
+namespace stockDepartment\modules\alix\controllers\ecommerce\barcode\domain\entities;
 
 use Yii;
 use yii\base\Model;

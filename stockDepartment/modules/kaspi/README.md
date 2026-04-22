@@ -19,7 +19,8 @@ stockDepartment/modules/kaspi/
 ├── kaspi.php                             # Yii-модуль, DI-регистрация сервисов
 ├── api/
 │   ├── kaspi-price-update.md             # спецификация POST /price-update
-│   └── kaspi-stock-update.md             # спецификация POST /stock-update
+│   ├── kaspi-stock-update.md             # спецификация POST /stock-update
+│   └── kaspi-orders-sales-flow.md        # sales-flow: poll → outbound → ASSEMBLE → 1C
 ├── constants/
 │   └── KaspiConstants.php                # базовые URL, пути эндпоинтов, дефолты
 ├── controllers/api/v1/
@@ -46,11 +47,15 @@ stockDepartment/modules/kaspi/
 ├── price-list/
 │   └── kaspi-price-list.xlsx             # сгенерированный прайс (цены + остатки)
 ├── services/
+│   ├── Alix1CApiService.php              # клиент Alix 1С (GET /items, postSale — заглушка)
 │   ├── KaspiAPIService.php               # низкоуровневые запросы к Kaspi (mock / live)
 │   ├── KaspiJsonApiSerializer.php
 │   ├── KaspiOrderHydrator.php            # JSON:API → OrderDto
-│   ├── KaspiService.php                  # сценарии контроллера (orders, import, classification, priceUpdate, stockUpdate, returns, label)
+│   ├── KaspiService.php                  # сценарии контроллера (orders, import, classification, priceUpdate, stockUpdate, returns, label, transfer-to-courier)
+│   ├── OneCSalesSyncService.php          # передача выполненных Kaspi-заказов в 1С (cron sync-completed-to-1c)
+│   ├── OrderImportService.php            # poll APPROVED_BY_BANK → EcommerceOutbound + резерв (cron poll-orders)
 │   ├── OrderReturnService.php            # сценарии возврата (A: cancel-return-to-stock, B: partial-return)
+│   ├── OrderStatusSyncService.php        # синхронизация статусов активных заказов (cron sync-order-statuses)
 │   ├── PriceListService.php              # сборка и запись Excel (прайс-лист для кабинета, с override остатков)
 │   ├── PriceService.php                  # применение и отложенная активация цен
 │   ├── StockHistoryService.php           # применение и отложенная активация override остатков
@@ -186,13 +191,21 @@ $orderReturn  = $module->get('orderReturnService');
 
 ```sh
 php yii cron/kaspi-activate-pending-prices
+php yii cron/kaspi-poll-orders
+php yii cron/kaspi-sync-order-statuses
+php yii cron/kaspi-sync-completed-to-1c
 php yii cron/kaspi-poll-returns
+php yii cron/alix-sync-items
 ```
 
-- `kaspi-activate-pending-prices` — забирает `kaspi_price_history` с `push_status = PENDING` и `effective_from <= now`, помечает их `SENT` и ровно один раз перегенерирует `price-list/kaspi-price-list.xlsx`.
-- `kaspi-poll-returns` — опрашивает Kaspi API на предмет заказов в статусе `KASPI_DELIVERY_RETURN_REQUESTED`, для каждого нового (по `source_kaspi_order_id`) создаёт `EcommerceInbound` return с позициями из `getOrderEntries`. Идемпотентно: повторный запуск не создаёт дубликатов.
-
-Рекомендуемое расписание — `*/30 * * * *`. Это закрывает пункты 2 («обновлять цены и остатки раз в 30 минут») и п.9 B (автоматический триггер возврата со стороны Kaspi по диаграмме).
+| Крон | Что делает | Рекомендуемое расписание |
+|---|---|---|
+| `kaspi-activate-pending-prices` | PENDING цены с `effective_from ≤ now` → SENT + регенерация xlsx | каждые 30 мин |
+| `kaspi-poll-orders`             | poll `APPROVED_BY_BANK + state=NEW` за 6ч, создание Outbound, резерв стока, `acceptOrder` | каждые 15 мин |
+| `kaspi-sync-order-statuses`     | синх активных Kaspi-заказов: обновление `external_kaspi_status`, снятие резерва при отмене, пометка COMPLETED к передаче в 1С | каждые 15 мин |
+| `kaspi-sync-completed-to-1c`    | передача выполненных Kaspi-заказов в 1С (`Alix1CApiService::postSale` — заглушка) | каждые 30 мин |
+| `kaspi-poll-returns`            | poll `KASPI_DELIVERY_RETURN_REQUESTED`, идемпотентное создание `EcommerceInbound` (возвраты) | каждые 30 мин |
+| `alix-sync-items`               | синх номенклатуры 1C → product_v2 / product_barcodes_v2 | каждые 30 мин |
 
 ---
 
@@ -200,9 +213,9 @@ php yii cron/kaspi-poll-returns
 
 **Товары:** `getProductsImportSchema`, `postProductsImport` / `…Response`, `getProductsImportStatus`, `getProductsClassificationCategories`, `getProductsClassificationAttributes`, `getProductsClassificationAttributeValues`, v2-offers (`sendOffers`, `getProductsV2OffersSchema`, `getProductsV2OffersImportStatus`, `getProductsV2Categories`, `getProductsV2Attributes`, `getProductsV2AttributeValues`).
 
-**Заказы (v2):** `getOrders` / `getOrdersPage` / `getOrdersResponse`, `getOrderById` / `getOrderByIdRaw`, `getOrderByCode` / `getOrdersByCodeRaw`, `getOrderEntries`, `getOrderEntry`, `deleteOrderEntry`, `updateEntriesWeight`, `setOrderImei`, `setOrderWeight`, `createWaybill`, `isOrderCancelled`, `postOrders`, `postOrderPayload`, `changeOrderStatus`, `submitOrderKaspiDelivery`, `acceptOrder`, `completeOrder`, `cancelOrder`.
+**Заказы (v2):** `getOrders` / `getOrdersPage` / `getOrdersResponse`, `getOrderById` / `getOrderByIdRaw`, `getOrderByCode` / `getOrdersByCodeRaw`, `getOrderEntries`, `getOrderEntry`, `deleteOrderEntry`, `updateEntriesWeight`, `setOrderImei`, `setOrderWeight`, `isOrderCancelled`, `postOrders`, `postOrderPayload`, `changeOrderStatus`, `assembleOrder`, `acceptOrder`, `sendCompletionCode` / `confirmCompletionWithCode`, `cancelOrder`.
 
-**Этикетки / накладная:** `createWaybill($orderId, $payload)` — POST в `orders/{id}/waybill`; `getShippingLabel($orderId)` — GET того же пути с `Accept: application/pdf`, возвращает `['mime' => 'application/pdf', 'body' => <binary>]` (в useMock — валидный мок-PDF из `KaspiMockFactory::getShippingLabelPdfMock`).
+**Этикетки / накладная:** `assembleOrder($orderId, $numberOfSpace)` — POST `/v2/orders` с `status=ASSEMBLE + numberOfSpace` (q3210). После этого Kaspi наполняет атрибут `waybill` заказа подписной URL на PDF накладной. `getShippingLabel($orderId)` получает заказ (`getOrderById`), берёт URL из `waybill` и скачивает PDF обычным GET (без `X-Auth-Token`). В useMock — валидный мок-PDF из `KaspiMockFactory::getShippingLabelPdfMock`.
 
 Примеры тел для смены статуса (POST `/v2/orders`):
 
@@ -229,18 +242,22 @@ php yii cron/kaspi-poll-returns
 | # | Требование | Статус | Где реализовано |
 |---|---|---|---|
 | 1 | Механизм управления ценой и остатками с включением в дату | ✅ реализовано | `PriceService`/`StockHistoryService` + `kaspi_price_history`/`kaspi_stock_history` (`effective_from`) |
-| 2 | Обновление цен/остатков раз в 30 мин | ⚠️ частично | Cron-экшен для цен (`cron/kaspi-activate-pending-prices`) есть. Нужно: (а) добавить `cron/kaspi-activate-pending-stocks`, (б) завести системный cron `*/30 * * * *` в окружении |
+| 2 | Обновление цен/остатков раз в 30 мин | ⚠️ частично | Cron-экшен для цен (`cron/kaspi-activate-pending-prices`) есть. Нужно: (а) добавить `cron/kaspi-activate-pending-stocks`, (б) завести системный cron для расписания в окружении |
 | 3 | Изменить цену товара по артикулу | ✅ реализовано | `POST /kaspi/api/v1/price-update` |
 | 4 | Изменить остатки по артикулу | ✅ реализовано | `POST /kaspi/api/v1/stock-update` (override для PP1 через `kaspi_stock_history`) |
-| 5 | Получить заказ | ✅ реализовано | `GET /kaspi/api/v1/kaspi/orders`; `KaspiAPIService::getOrderById/getOrderByCode` |
+| 5 | Получить заказ | ✅ реализовано | Авто: `cron/kaspi-poll-orders` → `OrderImportService` (APPROVED_BY_BANK → EcommerceOutbound + резерв + acceptOrder). Ручные: `GET /kaspi/api/v1/kaspi/orders`; `KaspiAPIService::getOrderById/getOrderByCode`. Спецификация — [api/kaspi-orders-sales-flow.md](api/kaspi-orders-sales-flow.md). |
 | 6 | Получить статус товара | ✅ реализовано | `GET /kaspi/api/v1/kaspi/products-import-status?i=<code>` (прокси к `getProductsImportStatus()`) |
-| 7 | «Чек» о передаче курьеру | ✅ реализовано | `POST /kaspi/api/v1/orders/<id>/transfer-to-courier` — JSON c данными waybill + перевод заказа в `KASPI_DELIVERY` |
+| 7 | «Чек» о передаче курьеру | ✅ реализовано | `POST /kaspi/api/v1/orders/<id>/transfer-to-courier` (тело: `{numberOfSpace}`) — перевод заказа в `ASSEMBLE`; ответ включает `waybill_url` и `waybill_number` из атрибутов заказа |
 | 8 | Этикетка на упаковку после сборки | ✅ реализовано | `GET /kaspi/api/v1/orders/<id>/label` — PDF с Kaspi (`application/pdf`) |
 | 9 | Возвраты (2 сценария) | ✅ реализовано | A: `POST /kaspi/api/v1/orders/<id>/cancel-return-to-stock` — cancelOrder + возврат резерва в `ecommerce_stock`. B: cron `kaspi-poll-returns` тянет Kaspi, для новых возвратов создаёт Inbound (`source_kaspi_order_id`); после приёмки — `POST /orders/<id>/confirm-return-completed` переводит Kaspi-заказ в `RETURNED`. Соответствует диаграмме `Alix/...(return).pdf`. |
 | 10 | Остатки в формате EXCEL | ✅ реализовано | `StockService::exportAvailableStockToExcel()` + `PriceListService` (в прайс-листе остатки тоже) |
 
+| 11 | Передача выполненных заказов в 1С | ⚠️ заглушка | `cron/kaspi-sync-completed-to-1c` → `OneCSalesSyncService` → `Alix1CApiService::postSale` (stub, логирует payload, возвращает OK). Замена на реальный HTTP-вызов — после получения спецификации 1С endpoint. |
+
 ### TODO к следующим итерациям
 
-- Cron-экшен `actionKaspiActivatePendingStocks` в `console/controllers/CronController.php` + системная запись `*/30 * * * *` (пункт 2).
+- Cron-экшен `actionKaspiActivatePendingStocks` в `console/controllers/CronController.php` + системная запись по расписанию (пункт 2).
 - Реальный Kaspi-токен и переключение `KaspiAPIService::useMock = false`.
+- Реальный endpoint 1С в `Alix1CApiService::postSale` (п.11).
 - Webhook от Kaspi для авто-инициации частичного возврата (сейчас оператор вручную, п.9 B).
+- Pagination по нескольким страницам в `OrderImportService` при большом потоке заказов.

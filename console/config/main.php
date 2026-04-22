@@ -15,7 +15,14 @@ return [
         'user' => [
             'class' => 'dektrium\user\Module',
             'cost' => 12,
-        ]
+        ],
+        'kaspi' => [
+            'class'         => 'stockDepartment\modules\kaspi\kaspi',
+            'apiToken'      => '+vWV5nZLFOVPEisce0YR9doMiBlv0NKfclVukFWP1SM=',
+            'useMock'       => false,
+            'httpLog'       => true,
+            'kaspiClientId' => 103,
+        ],
     ],
     'components' => [
         'log' => [

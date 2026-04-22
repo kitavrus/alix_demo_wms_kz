@@ -2,141 +2,177 @@
 
 namespace stockDepartment\modules\alix\controllers\outbound\domain;
 
-use stockDepartment\modules\alix\controllers\api\v1\outbound\dto\status_order\StatusOrderLogDTO;
-use stockDepartment\modules\alix\controllers\api\v1\outbound\mapper\OutboundAPIMapper;
-use stockDepartment\modules\alix\controllers\common\apilogs\models\ApiLogs;
-use stockDepartment\modules\alix\controllers\stock\domain\StockService;
-use common\modules\outbound\models\OutboundOrder;
-use common\modules\outbound\models\OutboundOrderItem;
-use common\modules\stock\models\Stock;
-use stdClass;
+use stockDepartment\modules\alix\controllers\outbound\domain\constants\OutboundSource;
+use stockDepartment\modules\alix\controllers\outbound\domain\constants\OutboundStatus;
+use stockDepartment\modules\alix\controllers\outbound\domain\dto\add_order\AddOrderItemRequestDTO;
+use stockDepartment\modules\alix\controllers\outbound\domain\dto\add_order\AddOrderRequestDTO;
+use stockDepartment\modules\alix\controllers\outbound\domain\entities\EcommerceOutbound;
+use stockDepartment\modules\alix\controllers\outbound\domain\entities\EcommerceOutboundItem;
+use stockDepartment\modules\alix\controllers\outbound\domain\repository\OutboundRepository;
+use stockDepartment\modules\alix\controllers\product\domains\ProductService;
 
 class OutboundService
 {
-	private $apiService;
 	private $repository;
-	/**
-	 *
-	 */
+	private $productService;
 	public function __construct()
 	{
-		$this->apiService = new \stockDepartment\modules\alix\controllers\api\v1\outbound\service\OutboundAPIService();
-		$this->repository = new \stockDepartment\modules\alix\controllers\outbound\domain\OutboundRepository();
+		$this->repository = new OutboundRepository();
+		$this->productService = new ProductService();
+	}
+	public function getOrderInfo($id) {
+		return $this->repository->getOrderInfo($id);
 	}
 
 	/**
-	 * @param integer $outboundId
+	 * @param AddOrderRequestDTO $createDTO
+	 * @return EcommerceOutbound
 	 */
-	public function sendStatusInWork($outboundId) {
-		$order = $this->repository->getOrder($outboundId);
-		if ($order && empty($order->begin_datetime)) {
-			$this->apiService->sendStatusInWork((new OutboundAPIMapper())->makeByOrderStatusOrderResponseDTO($order));
+	public function addOrder($createDTO)
+	{
+		$order = new EcommerceOutbound();
+		$order->client_id = $createDTO->clientId;
+		$order->order_number = $createDTO->orderNumber;
+		$order->expected_qty = $createDTO->expectedQty;
+		$order->client_ShipmentSource = $createDTO->shipmentSource;
+		$order->status = OutboundStatus::getNEW();
+		
+		$order->first_name = $createDTO->firstName;
+		$order->last_name = $createDTO->lastName;
+		$order->customer_name = $createDTO->customerName;
+		$order->email = $createDTO->email;
+		$order->phone_mobile1 = $createDTO->phoneMobile;
+		$order->country = $createDTO->country;
+		$order->region = $createDTO->region;
+		$order->city = $createDTO->city;
+		$order->zip_code = $createDTO->zipCode;
+		$order->street = $createDTO->street;
+		$order->save(false);
+		
+		$clientPackMessage = [];
+
+		foreach ($createDTO->items as $item) {
+			$p = $this->productService->getByGuid($item->guid);
+			$barcode = "";
+			if (count($p->barcodes)  > 0) {
+				$barcode = array_values($p->barcodes)[0];
+			}
+
+			$row = new EcommerceOutboundItem();
+			$row->outbound_id = $order->id;
+			$row->status = OutboundStatus::getNEW();
+			$row->product_sku = $item->guid;
+			$row->expected_qty = $item->quantity;
+			$row->product_id = $p->product->id;
+			$row->product_name = $p->product->name;
+			$row->product_barcode = $barcode;
+			$row->product_brand = $p->product->field_extra1;
+			$row->product_color = $p->product->color;
+			$row->product_model = $p->product->model;
+			$row->save(false);
+			
+			$clientPackMessage['items'][] = [
+				'lamoda_sku' => $item->lamoda_sku,
+				'item_name' => $item->item_name,
+				'quantity' => $item->quantity,
+				'unit_price' => $item->paidPrice,
+			];
 		}
+		
+		$order->client_PackMessage = json_encode($clientPackMessage, JSON_UNESCAPED_UNICODE);
+		$order->save(false);
+
+		return $order;
 	}
 
-	public function reservation($outbound_order_id,$address = [])
-	{
-		if($oo = OutboundOrder::findOne($outbound_order_id)) {
-
-			if (!in_array($oo->status,[Stock::STATUS_OUTBOUND_NEW,Stock::STATUS_OUTBOUND_PART_RESERVED])) {
-				return;
-			}
-
-			$allocatedQty = 0;
-			$inboundItemsGroupBySkuIDs = [];
-			$expectedQty = 0;
-			if($items = $oo->getOrderItems()->all()) {
-
-				foreach($items as $itemLine) {
-					$inboundItemsGroupBySkuIDs[$itemLine->product_id][] = $itemLine;
-				}
-
-				foreach($inboundItemsGroupBySkuIDs as $skuID=>$inboundItems) {
-					$currentSkuIDToLines = [];
-					foreach ($inboundItems as $i=>$item) {
-						if($i == 0) {
-							$expectedQty += $item->expected_qty;
-							$currentSkuIDToLines['exp'] = $item->expected_qty;
-							$currentSkuIDToLines['res'] = 0;
-						}
-						$currentSkuIDToLines['lines'][$item->id] = 0;
-
-						$item->expected_qty -= $currentSkuIDToLines['res'];
-						$item->allocated_qty = 0;
-						$item->status = Stock::STATUS_OUTBOUND_RESERVING;
-
-						$inStocksQuery = Stock::find()
-											  ->andWhere([
-//												  'product_barcode'=>$item->product_barcode,
-												  // 'product_id'=>$skuID,
-												  'product_sku'=>$item->product_sku,
-												  'client_id'=>$oo->client_id,
-												  'status_availability'=>Stock::STATUS_AVAILABILITY_YES,
-												  'condition_type'=>[Stock::CONDITION_TYPE_NOT_SET,Stock::CONDITION_TYPE_UNDAMAGED],
-											  ]);
-
-						$inStocks = $inStocksQuery
-							->orderBy('address_sort_order')
-							->limit($item->expected_qty)
-							->all();
-						if ($inStocks) {
-							foreach($inStocks as $stockLine) {
-								// ORDER ITEM
-								$item->allocated_qty += 1;
-								$currentSkuIDToLines['res'] += 1;
-								$currentSkuIDToLines['lines'][$item->id] += 1;
-								$allocatedQty++;
-								// STOCK
-								$stockLine->outbound_order_id = $oo->id;
-								$stockLine->outbound_order_item_id = $item->id;
-
-								$stockLine->status = Stock::STATUS_OUTBOUND_FULL_RESERVED;
-								$stockLine->status_availability = Stock::STATUS_AVAILABILITY_RESERVED;
-								$stockLine->save(false);
-							}
-						}
-
-						$item->status = Stock::STATUS_OUTBOUND_PART_RESERVED;
-
-						if( $item->allocated_qty == $item->expected_qty ) {
-							$item->status = Stock::STATUS_OUTBOUND_FULL_RESERVED;
-						}
-						$item->save(false);
-					}
-
-					$linesCount = count($currentSkuIDToLines['lines']);
-					$linesToDeleted = 0;
-					foreach($currentSkuIDToLines['lines'] as $lineID=>$reservedByLine) {
-						if(empty($reservedByLine) && $linesCount != 1 && $linesToDeleted != ($linesCount-1)) {
-							$linesToDeleted += 1;
-							OutboundOrderItem::deleteAll(['id'=>$lineID]);
-						}
-					}
-				}
-
-				$oo->expected_qty = $expectedQty;
-				$oo->allocated_qty = $allocatedQty;
-				$oo->status = Stock::STATUS_OUTBOUND_PART_RESERVED;
-
-				if( $oo->allocated_qty == $oo->expected_qty ) {
-					$oo->status = Stock::STATUS_OUTBOUND_FULL_RESERVED;
-				}
-				$oo->save(false);
-			}
+	/**
+	 * @param array $request
+	 * @return false
+	 */
+	public function isNotValidAddOrderData($request) {
+		if (!isset($request['order_id']) || !isset($request['items'])) {
 			return true;
 		}
+
+		if (count($request['items']) < 1) {
+			return true;
+		}
+		return false;
 	}
 
 	/**
-	 * @param integer $outboundId
-	 * @return ApiLogs $response
+	 * @param array $request
+	 * @return AddOrderRequestDTO
 	 */
-	public function sendStatusInCompleted($outboundId) {
-		$order = $this->repository->getOrder($outboundId);
-			$ss = new StockService();
-			$items = $ss->getDataForOutboundAPI($order->id);
-			$mapper = new OutboundAPIMapper();
-			$dataForAPI = $mapper->makeFinishResponse($order,$items);
-			return $this->apiService->sendStatusCompleted($dataForAPI);
+	public function requestToCreateDTO($request) {
+		$orderId = $request['order_id'];
+		$items = $request['items'];
+		$shipmentSource = $this->getShipmentSource($request);
+		$dto = new AddOrderRequestDTO();
+		$dto->clientId = 103;
+		$dto->orderNumber = $orderId;
+		$dto->shipmentSource = $shipmentSource;
+		$dto->firstName = isset($request['firstName']) ? $request['firstName'] : "";
+		$dto->lastName = isset($request['lastName']) ? $request['lastName'] : "";
+		$dto->customerName = isset($request['customerName']) ? $request['customerName'] : "";
+		$dto->email = isset($request['email']) ? $request['email'] : "";
+		$dto->phoneMobile = isset($request['phoneMobile']) ? $request['phoneMobile'] : "";
+		$dto->country = isset($request['country']) ? $request['country'] : "";
+		$dto->region = isset($request['region']) ? $request['region'] : "";
+		$dto->city = isset($request['city']) ? $request['city'] : "";
+		$dto->zipCode = isset($request['zipCode']) ? $request['zipCode'] : "";
+		$dto->street = isset($request['street']) ? $request['street'] : "";
+
+		foreach ($items as $product) {
+			$itemDto = new AddOrderItemRequestDTO();
+			$itemDto->guid = $product["guid"];
+			$itemDto->quantity = $product["quantity"];
+			$itemDto->lamoda_sku = isset($product["lamoda_sku"]) ? $product['lamoda_sku'] : "";
+			$itemDto->item_name = isset($product["item_name"]) ? $product['item_name'] : "";
+			$itemDto->paidPrice = isset($product["paidPrice"]) ? $product['paidPrice'] : "";
+
+			$dto->items[] = $itemDto;
+			$dto->expectedQty += $itemDto->quantity;
+		}
+
+		return $dto;
+	}
+
+	public function getShipmentSource($request) {
+		$shipmentSource = OutboundSource::getCRM();
+		if (isset($request['shipmentSource']) && !empty(trim($request['shipmentSource']))) {
+			$shipmentSource = $request['shipmentSource'];
+		} else if (strlen($request['order_id']) == 9) {
+			$shipmentSource = OutboundSource::getKASPI();
+		}
+		return $shipmentSource;
+	}
+	
+	/**
+	 * @param array $request
+	 * @return false
+	 */
+	public function isNotValidCancelOrderData($request) {
+		if (!isset($request['order_id'])) {
+			return true;
+		}
+		if (empty($request['order_id'])) {
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * @param string $orderNumber
+	 * @return EcommerceOutbound
+	 */
+	public function cancelOrder($orderNumber)
+	{
+		$order = EcommerceOutbound::find()->andWhere(["order_number"=>$orderNumber])->one();
+		if ($order) {
+			$order->client_CancelReason = OutboundStatus::getCANCEL();
+			$order->save(false);
+		}
+		return $order;
 	}
 }

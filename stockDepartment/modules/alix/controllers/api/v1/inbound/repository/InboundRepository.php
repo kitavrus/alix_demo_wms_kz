@@ -42,14 +42,18 @@ class InboundRepository
 	{
 		$ps = new ProductService();
 		foreach ($data->items as $item) {
-			$p = $ps->getByGuid($item->guid);
+			$p = $ps->resolveByGuidOrBarcodeOrArticle($item->guid, $item->barcode, $item->article);
+
+			$resolvedGuid = !empty($item->guid)
+				? $item->guid
+				: (!empty($p->product->guid) ? $p->product->guid : '');
 
 			$inboundOrderItem = new InboundOrderItem();
 			$inboundOrderItem->inbound_order_id = $orderId;
 			$inboundOrderItem->product_model = $item->article;
 			$inboundOrderItem->product_barcode = $item->barcode;
 			$inboundOrderItem->expected_qty = $item->quantity;
-			$inboundOrderItem->product_sku = $item->guid;
+			$inboundOrderItem->product_sku = $resolvedGuid;
 			$inboundOrderItem->product_id = $p->product->id;
 			$inboundOrderItem->product_name = $p->product->name;
 			$inboundOrderItem->product_brand = $p->product->brand;

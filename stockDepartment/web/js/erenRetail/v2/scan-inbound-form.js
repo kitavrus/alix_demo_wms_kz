@@ -362,7 +362,7 @@ $(function() {
 
                     $(messages_processText).html(' [ '+'Данные успешно загружены ] ').fadeOut( 5000,function() {
                         $(messages_processText).html('');
-                        window.location.href = '/intermode/inbound/scanning';
+                        window.location.reload();
                     } );
 
                 }).fail(function () {

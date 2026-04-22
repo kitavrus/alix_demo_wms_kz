@@ -29,6 +29,13 @@ use yii\helpers\BaseFileHelper;
  * price берётся из kaspi_price_history (последняя активная запись по product_guid).
  * Если для товара нет истории цен — используется product_price из ecommerce_stock.
  *
+ * Состав прайса = объединение двух источников:
+ *   1) все SKU со стоком ecommerce_stock (status_availability = YES) — qty из COUNT(*);
+ *   2) все SKU из kaspi_price_history с активной ценой, которых нет в (1) —
+ *      qty = 0, name/brand берутся из product_v2 (без карточки товар пропускается).
+ * Это позволяет заранее загружать цены на товары в транзите: Kaspi примет
+ * прайс, пометит availability="no", товар активируется, когда придёт остаток.
+ *
  * @see https://guide.kaspi.kz/partner/ru/shop/goods/price_list/q2962
  */
 class PriceListService extends Component
@@ -38,10 +45,9 @@ class PriceListService extends Component
     const PRICE_LIST_DIR_ALIAS = '@stockDepartment/modules/kaspi/price-list';
     const PRICE_LIST_WEB_DIR_ALIAS = '@stockDepartment/web';
 
-    // TODO: заменить на реальные данные из кабинета Kaspi
-    const KASPI_COMPANY = 'COMPANY_NAME';
-    const KASPI_MERCHANT_ID = 'MERCHANT_ID';
-    const KASPI_STORE_ID = 'STORE_ID';
+    const KASPI_COMPANY = 'ТОО "GLOMARK KZK"';
+    const KASPI_MERCHANT_ID = '30453464';
+    const KASPI_STORE_ID = 'PP1';
 
     /**
      * Сгенерировать Excel-прайс-лист и вернуть путь к файлу.
@@ -74,7 +80,7 @@ class PriceListService extends Component
      */
     public function buildCurrentPriceList()
     {
-        // Получаем все доступные товары из стока
+        // 1. Товары, которые сейчас доступны на складе
         $stockRows = EcommerceStock::find()
             ->select([
                 'product_sku',
@@ -93,24 +99,54 @@ class PriceListService extends Component
             ->asArray()
             ->all();
 
+        $stockGuids = array_column($stockRows, 'product_sku');
+
+        // 2. Товары с активной ценой в истории, которых нет в стоке —
+        //    цена назначена заранее (товар в пути / пре-загрузка).
+        $preloadGuids = $this->getPreloadGuids($stockGuids);
+
+        // 3. Карточки product_v2 — единственный источник name/brand для preload-строк
+        //    и источник article для колонки SKU.
+        $allGuids = array_unique(array_merge($stockGuids, $preloadGuids));
+        $productInfo = !empty($allGuids)
+            ? ProductV2::find()
+                ->select(['guid', 'article', 'name', 'brand'])
+                ->andWhere(['in', 'guid', $allGuids])
+                ->asArray()
+                ->all()
+            : [];
+        $articleMap = [];
+        $productMap = [];
+        foreach ($productInfo as $row) {
+            $articleMap[$row['guid']] = (string) $row['article'];
+            $productMap[$row['guid']] = $row;
+        }
+
+        // 4. Добавляем preload-строки с qty=0. Без карточки в product_v2 пропускаем —
+        //    name/brand негде взять, Kaspi отвергнет offer.
+        foreach ($preloadGuids as $guid) {
+            if (!isset($productMap[$guid])) {
+                Yii::warning(
+                    'Kaspi preload skipped: product_v2 not found for guid ' . $guid,
+                    'kaspi.price'
+                );
+                continue;
+            }
+            $stockRows[] = [
+                'product_sku'   => $guid,
+                'product_name'  => (string) $productMap[$guid]['name'],
+                'product_brand' => (string) $productMap[$guid]['brand'],
+                'product_price' => 0,
+                'qty'           => 0,
+            ];
+        }
+
         if (empty($stockRows)) {
             return [];
         }
 
-        $allGuids = array_column($stockRows, 'product_sku');
         $historyPrices = $this->getLatestActivePrices($allGuids);
         $historyQuantities = $this->getLatestActiveQuantities($allGuids);
-
-        // Маппинг GUID → article из product_v2 для колонки SKU в Excel
-        $guidToArticle = ProductV2::find()
-            ->select(['guid', 'article'])
-            ->andWhere(['in', 'guid', $allGuids])
-            ->asArray()
-            ->all();
-        $articleMap = [];
-        foreach ($guidToArticle as $row) {
-            $articleMap[$row['guid']] = (string) $row['article'];
-        }
 
         $result = [];
         foreach ($stockRows as $row) {
@@ -164,6 +200,30 @@ class PriceListService extends Component
     }
 
     // MARK: - Private
+
+    /**
+     * Получить GUID'ы товаров с активной ценой в истории, которых нет в стоке.
+     *
+     * Нужно для сценария «цена назначена заранее»: товар ещё в пути, в
+     * ecommerce_stock (YES) его нет, но цена уже в kaspi_price_history.
+     * Такие товары должны попасть в прайс-лист с qty=0 — Kaspi принимает
+     * прайс, но продаваться товар не будет, пока не придёт остаток.
+     *
+     * @param string[] $excludeGuids GUID'ы, уже представленные в стоке
+     * @return string[]
+     */
+    private function getPreloadGuids(array $excludeGuids)
+    {
+        $query = KaspiPriceHistory::find()
+            ->select('product_guid')
+            ->andWhere(['push_status' => KaspiPriceHistory::PUSH_STATUS_SENT])
+            ->andWhere(['<=', 'effective_from', time()])
+            ->distinct();
+        if (!empty($excludeGuids)) {
+            $query->andWhere(['not in', 'product_guid', $excludeGuids]);
+        }
+        return $query->column();
+    }
 
     /**
      * Получить последнюю активную цену по каждому SKU из kaspi_price_history.

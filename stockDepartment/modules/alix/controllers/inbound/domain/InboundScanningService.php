@@ -62,25 +62,16 @@ class InboundScanningService
 
 		$status = InboundAPIStatus::COMPLETED;
 		if ($inboundOrder->expected_qty != $inboundOrder->accepted_qty) {
-			$status = InboundAPIStatus::COMPLETED_WITH_DIFFERENCE;
+			$status = InboundAPIStatus::COMPLETED_WITH_DIFFERENCES;
 		}
 
-
+		$dto = (new InboundAPIMapper())->makeByOrderStatusOrderResponseDTO($inboundOrder);
 
 		if ($inboundOrder->order_type == 1) {
-			$scannedProducts = $this->stockService->getDataForInboundAPIV2($inboundOrder->id);
-
-			$this->apiService->sendStatusCompletedInbound(
-				(new InboundAPIMapper())->makeByOrderStatusWithDataOrderResponseDTO($inboundOrder, $scannedProducts),
-				$status
-			);
+			$this->apiService->sendStatusCompletedInbound($dto, $status);
 		}
 		if ($inboundOrder->order_type == 2) {
-			$scannedProducts = $this->stockService->getDataForInboundReturnAPI($inboundOrder->id);
-			$this->apiService->sendStatusCompletedReturn(
-				(new InboundAPIMapper())->makeByOrderStatusWithDataOrderResponseDTO($inboundOrder, $scannedProducts),
-				$status
-			);
+			$this->apiService->sendStatusCompletedReturn($dto, $status);
 		}
 	}
 

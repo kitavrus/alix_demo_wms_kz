@@ -1,15 +1,15 @@
 <?php
-//use yii\helpers\Html;
-//use yii\helpers\ArrayHelper;
 use yii\bootstrap\ActiveForm;
 use yii\bootstrap\Alert;
 use yii\helpers\Url;
-//use yii\bootstrap\Modal;
 use yii\helpers\Html;
-use stockDepartment\modules\intermode\controllers\outbound\domain\OutboundAsset;
-OutboundAsset::register($this);
-?>
 
+\stockDepartment\modules\alix\assets\ScanOutboundFormAsset::register($this);
+
+// Если ScanningController::actionPackage редиректнул сюда с ?download=<orderNumber>,
+// подгружаем Kaspi-накладную в скрытом iframe — браузер скачает PDF, страница не меняется.
+$downloadOrderNumber = Yii::$app->request->get('download');
+?>
 <div id="messages-scanning-container">
     <div id="messages-base-line"></div>
     <?= Alert::widget([
@@ -21,103 +21,119 @@ OutboundAsset::register($this);
     ]);
     ?>
 </div>
+<h1>
+    <div style = " float:left; font-size: 25px;">Отгрузка</div>
 
-<div class="scanning-form">
-<?php $form = ActiveForm::begin([
-        'id' => 'scanning-form',
-        'enableClientValidation' => false,
-        'validateOnChange' => false,
-        'validateOnSubmit' => false,
-        'options' => [
-            'data-printType' => \Yii::$app->params['printType']
-        ]
-    ]
-); ?>
-
-<?= $form->field($model, 'employee_barcode')
-	->textInput([
-			'class' => 'form-control input-lg',
-		    'data-url' => Url::toRoute('employee-barcode')
-	]); ?>
-
-<?= $form->field($model, 'picking_list_barcode',
-    ['template' => "{alert}\n{label}\n{input-group-begin}{input}{button-right}{input-group-end}\n{hint}\n{error}\n",
-        'parts' => [
-            '{alert}' => '<div class="-" id="alert-picking-list"></div>',
-            '{input-group-begin}' => '<div class="input-group">',
-            '{input-group-end}' => '</div>',
-            '{button-right}' => '<div class="input-group-addon" style="font-size: 30px;" id="order-exp-accept">0/0</div>'
-        ]
-    ]
-)->textInput([
-		'class' => 'form-control ext-large-input',
-	    'data-url' => Url::toRoute('picking-list-barcode')
+<?= Html::tag('div',
+Yii::t('outbound/buttons', 'Упакован'),
+[
+	'data-url' => Url::toRoute('package'),
+	'data-validate-url' => Url::toRoute('validate-print-box-label'),
+	'class' => 'btn btn-danger',
+	'id' => 'outboundform-package-for-order-bt',
+	'style' => 'margin-top:-42px; float:right; font-size: 25px; margin: 0px 5px 0px 5px'
 ]) ?>
 
-<?= $form->field($model, 'box_barcode', [
-    'template' => "{label}\n{input-group-begin}{counter}{input}{button-right}{input-group-end}\n{hint}\n{error}\n",
-    'parts' => [
-        '{label}' => '<label for="scanningform-box_barcode">' . Yii::t('outbound/forms', 'Box Barcode') . '</label>',
-        '{input-group-begin}' => '<div class="input-group">',
-        '{input-group-end}' => '</div>',
-        '{counter}' => '<div class="input-group-addon" style="font-size: 30px;">' . Yii::t('outbound/forms', 'Products') . ': <strong id="count-product-in-box" >0</strong>&nbsp;&nbsp;&nbsp;&nbsp;<span class="in-box">' . Yii::t('outbound/forms', 'In box') . ': </span></div>',
-        '{button-right}' => '<div class="input-group-addon" style="background-color: none; border: none; border-radius: none;" ><span class="btn btn-success btn-xs" data-url-value="' . Url::toRoute(['clear-box']) . '" id="clear-box-scanning-outbound-bt">' . Yii::t('outbound/buttons', 'Clear Box') . '</span></div>'
-    ]
-])->textInput([
-		'class' => 'form-control ext-large-input',
-	    'data-url' => Url::toRoute('box-barcode')
-])->label(Yii::t('outbound/forms', 'Box Barcode')) ?>
+    </h1>
+<br />
+<br />
+<div class="scanning-form">
+    <?php $form = ActiveForm::begin([
+            'id' => 'outboundform',
+            'enableClientValidation' => false,
+            'validateOnChange' => false,
+            'validateOnSubmit' => false,
+        ]
+    ); ?>
 
-<?= $form->field($model, 'product_barcode',
-['labelOptions' => ['label' => Yii::t('outbound/forms', 'Product Barcode')],
-            'template' => "{label}\n{input-group-begin}{input}{button-right}{input-group-end}\n{hint}\n{error}\n",
+    <?= $form->field($model, 'employee_barcode')->textInput([
+        'class' => 'form-control input-lg',
+        'data-url' => Url::toRoute('employee-barcode-handler')
+    ]); ?>
+
+    <?= $form->field($model, 'pick_list_barcode'
+        ,
+        ['template' => "{label}\n{input-group-begin}{button-right}{input}{input-group-end}\n{hint}\n{error}\n",
             'parts' => [
-    '{label}' => '<label for="scanningform-box_barcode">' . Yii::t('outbound/forms', 'Box Barcode') . '</label>',
-    '{input-group-begin}' => '<div class="input-group">',
-    '{input-group-end}' => '</div>',
-    '{button-right}' => '<div class="input-group-addon" style="background-color: none; border: none; border-radius: none;" ><span class="btn btn-success btn-xs" data-url-value="' . Url::toRoute(['clear-product-in-box-by-one']) . '" id="clear-product-in-box-by-one-scanning-outbound-bt">' . Yii::t('outbound/buttons', 'Clear product in box') . '</span></div>'
-]
-		]
-)->textInput([
-		'class' => 'form-control ext-large-input',
-	    'data-url' => Url::toRoute('product-barcode'),
-])->label(Yii::t('outbound/forms', 'Product Barcode')." ( Напиши готово для печати этикеток )") ?>
-
-<?= $form->field($model, 'box_kg')->textInput([
-	'class' => 'form-control input-lg',
-	'data-url' => Url::toRoute('save-box-kg')
-]); ?>
-
-<?= $form->field($model, 'picking_list_barcode_scanned', ['template'=>'{input}'])->textarea(['value'=>'','style'=>'display:none']); ?>
-
-
-<?php ActiveForm::end(); ?>
-<div class="row" style="margin: 20px 1px">
-
-
-    <?= Html::tag('span', Yii::t('outbound/buttons', 'List differences'), ['data-url' => Url::toRoute('printing-differences-list'), 'class' => 'btn btn-success', 'id' => 'scanning-form-differences-list-bt', 'style' => 'margin-left:10px;']) ?>
-    <?= Html::tag('span', Yii::t('outbound/buttons', 'Print box label'), ['data-url' => Url::toRoute('printing-box-label'),'data-validate-url' => Url::toRoute('validate-printing-box-label'), 'class' => 'btn btn-success', 'id' => 'scanning-form-print-box-label-bt', 'style' => 'margin-right:10px; float:right;']) ?>
-
-</div>
-<div id="error-container">
-    <div id="error-base-line"></div>
-    <?= Alert::widget([
-        'options' => [
-            'id' => 'error-list',
-            'class' => 'alert-danger hidden',
-        ],
-        'body' => '',
-    ]);
+                '{input-group-begin}' => '<div class="input-group">',
+                '{input-group-end}' => '</div>',
+                '{button-right}' => '<div class="input-group-addon" style="font-size: 62px;" id="pick-list-barcode-qty">0</div>'
+            ]
+        ]
+    )->textInput([
+        'class' => 'form-control ext-large-input',
+        'data-url' => Url::toRoute('pick-list-barcode-handler')
+    ])
     ?>
+
+    <?= $form->field($model, 'package_barcode'
+        ,
+        ['template' => "{label}\n{input-group-begin}{button-right}{input}{input-group-end}\n{hint}\n{error}\n",
+            'parts' => [
+                '{input-group-begin}' => '<div class="input-group">',
+                '{input-group-end}' => '</div>',
+                '{button-right}' => '<div class="input-group-addon" style="font-size: 62px;" id="package-barcode-qty">0/0</div>'
+            ]
+        ]
+    )->textInput([
+        'class' => 'form-control ext-large-input',
+        'data-url' => Url::toRoute('package-barcode')
+    ])
+    ?>
+
+    <?= $form->field($model, 'product_barcode'
+    )->textInput([
+        'class' => 'form-control ext-large-input',
+        'data-url' => Url::toRoute('product-barcode-handler')
+    ])->label(Yii::t('outbound/forms', 'Product Barcode')) ?>
+
+	<?= $form->field($model, 'product_qrcode'
+    )->textInput([
+        'class' => 'form-control ext-large-input',
+        'data-url' => Url::toRoute('product-qrcode-handler')
+    ])->label(Yii::t('outbound/forms', 'QR код')) ?>
+
+	<?= $form->field($model, 'stockId')->hiddenInput()->label(false)->error(false); ?>
+
+    <?php ActiveForm::end(); ?>
+
+    <div class="row" style="margin: 20px 1px">
+        <?= Html::tag('span', Yii::t('outbound/buttons', 'Содержимое заказа'), ['data-url' => Url::toRoute('show-picking-list-items'), 'class' => 'btn btn-success', 'id' => 'outboundform-show-picking-list-items-bt', 'style' => 'margin-left:10px;']) ?>
+        <?= Html::tag('span', Yii::t('outbound/buttons', 'Clear Box'), ['data-url' => Url::toRoute('empty-package'), 'class' => 'btn btn-warning pull-right', 'id' => 'outboundform-clear-box-bt', 'style' => 'margin-left:10px;']) ?>
+    </div>
+
+    <div id="error-container">
+        <div id="error-base-line"></div>
+        <?= Alert::widget([
+            'options' => [
+                'id' => 'error-list',
+                'class' => 'alert-danger hidden',
+            ],
+            'body' => '',
+        ]);
+        ?>
+    </div>
+    <div id="show-picking-list-items" class="table-responsive"></div>
 </div>
-<div id="outbound-items" class="table-responsive">
-    <table class="table">
-        <tr>
-            <th><?= Yii::t('outbound/forms', 'Product Barcode'); ?></th>
-            <th><?= Yii::t('outbound/forms', 'Product Model'); ?></th>
-            <th><?= Yii::t('outbound/forms', 'Box Barcode'); ?></th>
-            <th><?= Yii::t('outbound/forms', 'Qty'); ?></th>
-        </tr>
-        <tbody id="outbound-item-body"></tbody>
-    </table>
-</div>
+
+<?php if (!empty($downloadOrderNumber)): ?>
+    <iframe
+        src="<?= Url::toRoute(['/alix/outbound/scanning/kaspi-label', 'orderNumber' => $downloadOrderNumber]) ?>"
+        style="display:none;"
+        title="Kaspi waybill download"></iframe>
+<?php endif; ?>
+
+<script type="application/javascript">
+	$(function(){
+		$('#outboundform-package-for-order-bt').on('click',function() {
+			var orderNumberValue = $('#outboundform-pick_list_barcode').val(),
+				url = $(this).data('url');
+			if(confirm('Вы уверены, что хотите закрыть накладную')) {
+				if (orderNumberValue) {
+					console.info(url+"?orderNumber="+orderNumberValue)
+					window.location.href = url+"?orderNumber="+orderNumberValue;
+				}
+			}
+		});
+	});
+</script>

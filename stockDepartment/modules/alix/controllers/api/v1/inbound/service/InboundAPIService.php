@@ -10,15 +10,32 @@ use yii\httpclient\Response;
 use stockDepartment\modules\alix\controllers\common\apilogs\dto\AddResponse;
 use stockDepartment\modules\alix\controllers\common\apilogs\ServiceApiLogs;
 
+/**
+ * Клиент 1С для уведомления о смене статуса документов приёмки/возврата.
+ *
+ * Единый endpoint: POST {baseURL}/ChangeDocumentStatus/
+ * Payload: { order: "inbound"|"return", wms_id, status }
+ *
+ * Сервер/порт/имя базы и Basic-auth совпадают с сервисом получения номенклатуры
+ * (см. stockDepartment\modules\kaspi\constants\KaspiConstants::ALIX_1C_*).
+ */
 class InboundAPIService
 {
-	private $username = "HTTPService";
-	private $password = "httplcst134!";
-	//private $baseURL = "http://185.233.1.45/Trade/hs/NMDX";
-	private $baseURL = "https://helpdesk.erenretailTEST.kz/trade/hs/NMDX";
-	//private $baseURL = "http://185.233.1.45/KZ-trade_for_Enes/hs/NMDX";
-//	private $baseURL = "http://185.233.1.45/KZ-trade_for_Enes/hs/NMDX/ChangeDocumentStatus/";
-	//private $baseURL = "http://10.3.172.2/KZ-trade_for_Enes/hs/NMDX/ChangeDocumentStatus/";
+	const ORDER_INBOUND = "inbound";
+	const ORDER_RETURN = "return";
+
+	const ENDPOINT_CHANGE_STATUS = "ChangeDocumentStatus/";
+
+	/**
+	 * Таймаут запроса к 1С, сек. Вызов синхронный (внутри UI-запроса оператора),
+	 * поэтому держим его коротким — если 1С недоступна, продолжаем как при ошибке.
+	 */
+	const REQUEST_TIMEOUT_SECONDS = 5;
+
+	private $username = "Kaspi";
+	private $password = "525";
+	private $baseURL = "http://185.249.195.105/DEV_KZ_RETAIL/hs/NMDX";
+
 	private $httpClient;
 	private $log;
 
@@ -27,6 +44,7 @@ class InboundAPIService
 		$this->httpClient = new HttpClient(['baseUrl' => $this->baseURL]);
 		$this->log = new ServiceApiLogs();
 	}
+
 	/**
 	 * @return Request request instance.
 	 */
@@ -35,38 +53,21 @@ class InboundAPIService
 		$request->headers->set('Authorization', 'Basic ' . base64_encode("$this->username:$this->password"));
 		$request->setMethod('POST');
 		$request->setFormat(HttpClient::FORMAT_JSON);
-		//$request->setUrl('/');
+		$request->setUrl(self::ENDPOINT_CHANGE_STATUS);
+		$request->setOptions([
+			'timeout' => self::REQUEST_TIMEOUT_SECONDS,
+		]);
 		return $request;
 	}
 
 	/**
 	 * @param StatusOrderResponseDTO $data
-	 * @return boolean
+	 * @return boolean true если в 1С вернулась ошибка (сканирование продолжаем всё равно)
 	 * @throws \yii\httpclient\Exception
 	 */
 	public function sendStatusInWorkInbound($data)
 	{
-		$request = $this->createRequest();
-		$request->setUrl("ChangeDocumentStatus/");
-		$payload = [
-			'order_id' => $data->orderNumber,
-			'wms_id' => strval($data->wmsId),
-			'status' => InboundAPIStatus::IN_WORK,
-			'order' => "inbound",
-		];
-		
-		$this->log->addB2BInboundRequest($data->wmsId,$data->orderNumber,$payload["status"],$payload);
-		
-		$response = $this->sendStatus($payload,$request);
-		
-		$lr = new AddResponse();
-		$lr->id = $this->log->getCurrentID();
-		$lr->response_data = $response->getContent();
-		$lr->response_code = $response->getStatusCode();
-		$lr->response_message = $response->toString();
-		$this->log->addResponse($lr);
-
-		return !$response->getIsOk();
+		return $this->sendChangeStatus($data, self::ORDER_INBOUND, InboundAPIStatus::IN_WORK, 'inbound');
 	}
 
 	/**
@@ -75,76 +76,63 @@ class InboundAPIService
 	 */
 	public function sendStatusInWorkReturn($data)
 	{
-		$request = $this->createRequest();
-		$request->setUrl("ChangeDocumentStatus/");
-		$payload = [
-			'order_id' => $data->orderNumber,
-			'wms_id' => strval($data->wmsId),
-			'status' => InboundAPIStatus::IN_WORK,
-			'order' => "return",
-		];
-		
-		$this->log->addB2BReturnRequest($data->wmsId,$data->orderNumber,$payload["status"],$payload);
-
-		$response = $this->sendStatus($payload,$request);
-
-		$lr = new AddResponse();
-		$lr->id = $this->log->getCurrentID();
-		$lr->response_data = $response->getContent();
-		$lr->response_code = $response->getStatusCode();
-		$lr->response_message = $response->toString();
-		$this->log->addResponse($lr);
-
-		return !$response->getIsOk();
+		return $this->sendChangeStatus($data, self::ORDER_RETURN, InboundAPIStatus::IN_WORK, 'return');
 	}
 
 	/**
 	 * @param StatusOrderResponseDTO $data
+	 * @param string $status InboundAPIStatus::COMPLETED | COMPLETED_WITH_DIFFERENCES
 	 * @return boolean
 	 */
-	public function sendStatusCompletedInbound($data,$status)
+	public function sendStatusCompletedInbound($data, $status)
 	{
-		$request = $this->createRequest();
-		$request->setUrl("InboundComplete/");
-		$payload = [
-			'order_id' => $data->orderNumber,
-			'wms_id' => strval($data->wmsId),
-			'status' => $status,
-			"items"=>$data->items,
-		];
-		
-		$this->log->addB2BInboundRequest($data->wmsId,$data->orderNumber,$payload["status"],$payload);
-
-		$response = $this->sendStatus($payload,$request);
-
-		$lr = new AddResponse();
-		$lr->id = $this->log->getCurrentID();
-		$lr->response_data = $response->getContent();
-		$lr->response_code = $response->getStatusCode();
-		$lr->response_message = $response->toString();
-		$this->log->addResponse($lr);
-
-		return !$response->getIsOk();
+		return $this->sendChangeStatus($data, self::ORDER_INBOUND, $status, 'inbound');
 	}
 
 	/**
 	 * @param StatusOrderResponseDTO $data
+	 * @param string $status InboundAPIStatus::COMPLETED | COMPLETED_WITH_DIFFERENCES
 	 * @return boolean
 	 */
-	public function sendStatusCompletedReturn($data,$status)
+	public function sendStatusCompletedReturn($data, $status)
+	{
+		return $this->sendChangeStatus($data, self::ORDER_RETURN, $status, 'return');
+	}
+
+	/**
+	 * @param StatusOrderResponseDTO $data
+	 * @param string $orderType ORDER_INBOUND | ORDER_RETURN
+	 * @param string $status    InboundAPIStatus::*
+	 * @param string $logType   'inbound' | 'return' — выбирает метод логирования
+	 * @return boolean true если ответ 1С не OK (или запрос упал)
+	 */
+	private function sendChangeStatus($data, $orderType, $status, $logType)
 	{
 		$request = $this->createRequest();
-		$request->setUrl("ReturnOrderComplete/");
 		$payload = [
-			'order_id' => $data->orderNumber,
+			'order' => $orderType,
 			'wms_id' => strval($data->wmsId),
 			'status' => $status,
-			"items"=>$data->items,
 		];
 
-		$this->log->addB2BReturnRequest($data->wmsId,$data->orderNumber,$payload["status"],$payload);
+		if ($logType === 'return') {
+			$this->log->addB2BReturnRequest($data->wmsId, $data->orderNumber, $status, $payload);
+		} else {
+			$this->log->addB2BInboundRequest($data->wmsId, $data->orderNumber, $status, $payload);
+		}
 
-		$response = $this->sendStatus($payload,$request);
+		try {
+			$request->setData($payload);
+			$response = $request->send();
+		} catch (\Exception $e) {
+			$lr = new AddResponse();
+			$lr->id = $this->log->getCurrentID();
+			$lr->response_data = $e->getMessage();
+			$lr->response_code = 0;
+			$lr->response_message = $e->getMessage();
+			$this->log->addResponse($lr);
+			return true;
+		}
 
 		$lr = new AddResponse();
 		$lr->id = $this->log->getCurrentID();
@@ -154,17 +142,5 @@ class InboundAPIService
 		$this->log->addResponse($lr);
 
 		return !$response->getIsOk();
-	}
-
-	/**
-	 * @param $payload
-	 * @param $request
-	 * @return boolean
-	 */
-	private function sendStatus($payload,$request)
-	{
-		$request->setData($payload);
-		$response = $request->send();
-		return $response;
 	}
 }

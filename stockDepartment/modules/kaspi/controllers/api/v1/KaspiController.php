@@ -69,6 +69,7 @@ class KaspiController extends Controller
             'class' => VerbFilter::className(),
             'actions' => [
                 'orders' => ['GET'],
+                'order' => ['GET'],
                 'products-import' => ['POST'],
                 'products-import-status' => ['GET'],
                 'products-classification-categories' => ['GET'],
@@ -92,14 +93,25 @@ class KaspiController extends Controller
 
     // MARK: - Orders
 
-    /** 
-     * Получить список заказов 
+    /**
+     * Получить список заказов
      * GET /v2/orders
      * */
     public function actionOrders()
     {
         Yii::$app->response->format = Response::FORMAT_JSON;
         return $this->kaspiService->orders(Yii::$app->request->get());
+    }
+
+    /**
+     * Получить один заказ по id (сырой JSON:API ответ Kaspi).
+     *
+     * GET /kaspi/api/v1/orders/<orderId>
+     */
+    public function actionOrder($orderId)
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        return $this->kaspiService->orderById((string) $orderId);
     }
 
     // MARK: - Products
