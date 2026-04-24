@@ -159,7 +159,7 @@ return [
         'kaspi' => [
             'class'         => 'stockDepartment\modules\kaspi\kaspi',
             'apiToken'      => '+vWV5nZLFOVPEisce0YR9doMiBlv0NKfclVukFWP1SM=',
-            'useMock'       => false,
+            'useMock'       => true,
             'httpLog'       => true,
             'kaspiClientId' => 103,
         ],
@@ -190,8 +190,15 @@ return [
 				],
 				[
 //					'class' => 'yii\rest\UrlRule',
+					// legacy URL для 1С — маршрут ведёт на новый ecommerce-контроллер, пишущий в ecommerce_inbound
 					'pattern' => "alix/api/v1/inbound/orders",
-					"route"=>"alix/api/v1/inbound/orders",
+					"route"=>"alix/ecommerce/api/v1/inbound/orders",
+					'verb'=>'POST'
+				],
+				[
+//					'class' => 'yii\rest\UrlRule',
+					'pattern' => "alix/ecommerce/api/v1/inbound/orders",
+					"route"=>"alix/ecommerce/api/v1/inbound/orders",
 					'verb'=>'POST'
 				],
 				[

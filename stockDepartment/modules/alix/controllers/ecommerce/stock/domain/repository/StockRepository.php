@@ -7,7 +7,7 @@ use stockDepartment\modules\alix\controllers\ecommerce\stock\domain\constants\St
 use stockDepartment\modules\alix\controllers\ecommerce\stock\domain\constants\StockAvailability;
 use stockDepartment\modules\alix\controllers\ecommerce\stock\domain\constants\StockConditionType;
 use stockDepartment\modules\alix\controllers\ecommerce\stock\domain\constants\StockInboundStatus;
-use stockDepartment\modules\alix\controllers\outbound\domain\constants\StockOutboundStatus;
+use stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\constants\StockOutboundStatus;
 //use stockDepartment\modules\alix\controllers\ecommerce\stock\domain\entities\EcommerceStock;
 use common\modules\stock\models\Stock;
 use common\overloads\ArrayHelper;

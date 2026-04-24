@@ -7,14 +7,20 @@ use stockDepartment\modules\kaspi\services\KaspiOrderHydrator;
 /** Моки ответов Kaspi API (useMock). */
 class KaspiMockFactory
 {
-    private static $defaultOrderId = 'ODk2ODg0NjEw';
-    private static $defaultEntryId = 'ODk2ODg0NjEwIyMw';
+    private static $defaultOrderId = 'ODk3MDE1NDMx';
+    private static $defaultEntryId = 'ODk3MDE1NDMxIyMw';
     private static $defaultCustomerId = 'NzAyNjM4NTcwNQ';
     // Артикул реального товара для поллинга через cron/kaspi-poll-orders —
     // должен существовать в product_v2 / ecommerce_stock, иначе импорт упадёт на резерве.
-    private static $defaultProductCode = '1100005012';
-    private static $defaultProductName = 'ЖИДКИЙ КОНСИЛЕР 101 LIGHT IVORY';
+    private static $defaultProductCode = '1100015431';
+    private static $defaultProductName = 'SOS-крем';
     private static $defaultProductPrice = 4990;
+    /** @var int Количество в outbound-позиции (сколько купили). Меняется в тестах. */
+    public static $defaultOrderQuantity = 3;
+    /** @var int|null Сколько клиент возвращает из купленного. null = полный возврат (= $defaultOrderQuantity). */
+    public static $defaultReturnedQuantity = 1;
+    /** @var string Refund code для синтезированного mock-ответа (уникален per test). */
+    public static $defaultRefundCode = 'RF-PARTIAL-002';
 
     private static function getSampleOrderResource($orderId = null)
     {
@@ -140,6 +146,27 @@ class KaspiMockFactory
         ];
     }
 
+    /**
+     * Вариант mock-ответа под фильтр filter[orders][status]. Тот же sample-order,
+     * но с подменённым status (для простого e2e теста возвратного флоу через
+     * cron/kaspi-poll-returns).
+     */
+    public static function getOrdersApiResponseByStatus($status)
+    {
+        $orderId = self::$defaultOrderId;
+        $order = self::getSampleOrderResource($orderId);
+        $order['attributes']['status'] = $status;
+
+        return [
+            'data' => [$order],
+            'included' => [],
+            'meta' => [
+                'pageCount' => 1,
+                'totalCount' => 1,
+            ],
+        ];
+    }
+
     public static function getOrdersList()
     {
         $payload = self::getOrdersApiResponse();
@@ -209,7 +236,7 @@ class KaspiMockFactory
                 'type' => 'orderEntries',
                 'id' => $entryId,
                 'attributes' => [
-                    'quantity' => 1,
+                    'quantity' => self::$defaultOrderQuantity,
                     'basePrice' => self::$defaultProductPrice,
                     'totalPrice' => self::$defaultProductPrice,
                     'price' => self::$defaultProductPrice,
@@ -229,21 +256,30 @@ class KaspiMockFactory
 
     public static function getOrderEntriesApiResponse($orderId)
     {
+        $quantity = max(1, (int) self::$defaultOrderQuantity);
+        // returnedQuantity = сколько возвращают (может быть < quantity для partial).
+        // Используется OrderReturnService::readReturnRequestFromKaspi.
+        $returnedQuantity = self::$defaultReturnedQuantity !== null
+            ? max(0, (int) self::$defaultReturnedQuantity)
+            : $quantity;
+
         return [
             'data' => [
                 [
                     'type' => 'orderEntries',
                     'id' => self::$defaultEntryId,
                     'attributes' => [
-                        'quantity' => 1,
-                        'basePrice' => self::$defaultProductPrice,
-                        'totalPrice' => self::$defaultProductPrice,
-                        'productCode' => self::$defaultProductCode,
-                        'productName' => self::$defaultProductName,
+                        'quantity'         => $quantity,
+                        'returnedQuantity' => $returnedQuantity,
+                        'basePrice'        => self::$defaultProductPrice,
+                        'totalPrice'       => self::$defaultProductPrice,
+                        'productCode'      => self::$defaultProductCode,
+                        'productName'      => self::$defaultProductName,
                     ],
                 ],
             ],
-            'orderId' => $orderId,
+            'refundCode' => self::$defaultRefundCode,
+            'orderId'    => $orderId,
         ];
     }
 

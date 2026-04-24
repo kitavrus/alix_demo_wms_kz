@@ -2,7 +2,7 @@
 
 namespace stockDepartment\modules\alix\controllers\product\domains;
 
-use stockDepartment\modules\alix\controllers\outbound\domain\dto\add_order\AddOrderResponseDTO;
+use stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\dto\add_order\AddOrderResponseDTO;
 use stockDepartment\modules\alix\controllers\product\domains\dto\Filter;
 use yii\httpclient\Client as HttpClient;
 use yii\httpclient\Request;

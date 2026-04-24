@@ -23,7 +23,7 @@ class ScanningController extends Controller
     public function actionIndex()
     {
         $inboundForm = new InboundForm();
-        $client_id = Client::CLIENT_ERENRETAIL;
+        $client_id = Client::CLIENT_ALIXAVIEN;
         $inboundForm->client_id = $client_id;
 
         $partyNumberArray = ArrayHelper::map(
@@ -598,7 +598,7 @@ class ScanningController extends Controller
 		$form->setScenario(InboundForm::SCENARIO_ORDER_NUMBER);
         if ($form->load(Yii::$app->request->post()) && $form->validate()) {
             $dtoRepository = new \stdClass();
-            $dtoRepository->clientId = 103;
+            $dtoRepository->clientId = Client::CLIENT_ALIXAVIEN;
             $dtoRepository->orderType = InboundOrder::ORDER_TYPE_ECOMM_RETURN;
 
             $repository = new InboundRepository($dtoRepository);

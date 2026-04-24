@@ -238,7 +238,13 @@ class KaspiAPIService extends Component
    public function getOrdersPage(array $params = [])
     {
         if ($this->useMock) {
-            return KaspiOrderHydrator::hydrateOrderListResponse(KaspiMockFactory::getOrdersApiResponse());
+            $statusFilter = isset($params['filter[orders][status]'])
+                ? (string) $params['filter[orders][status]']
+                : '';
+            $response = $statusFilter !== ''
+                ? KaspiMockFactory::getOrdersApiResponseByStatus($statusFilter)
+                : KaspiMockFactory::getOrdersApiResponse();
+            return KaspiOrderHydrator::hydrateOrderListResponse($response);
         }
 
         // Kaspi требует pagination: page[number] и page[size].

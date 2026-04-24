@@ -6,7 +6,7 @@ use common\ecommerce\entities\EcommerceOutbound;
 use common\ecommerce\entities\EcommerceOutboundItem;
 use common\ecommerce\entities\EcommerceStock;
 use common\modules\stock\models\Stock;
-use stockDepartment\modules\alix\controllers\outbound\domain\constants\CourierCompany;
+use stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\constants\CourierCompany;
 use stockDepartment\modules\kaspi\dto\OrderDto;
 use stockDepartment\modules\kaspi\enums\OrderStatus;
 use Yii;
