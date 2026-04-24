@@ -33,6 +33,9 @@ use Yii;
  * @property string $client_IsRefundable
  * @property string $client_RefundableMessage
  * @property string $return_reason
+ * @property string $source_kaspi_order_id
+ * @property string $source_kaspi_refund_code
+ * @property int $kaspi_returned_at
  */
 class EcommerceReturn extends \common\models\ActiveRecord
 {
@@ -50,7 +53,7 @@ class EcommerceReturn extends \common\models\ActiveRecord
     public function rules()
     {
         return [
-            [['outbound_id','client_id', 'expected_qty', 'accepted_qty', 'status', 'begin_datetime', 'end_datetime', 'date_confirm', 'created_user_id', 'updated_user_id', 'created_at', 'updated_at', 'deleted'], 'integer'],
+            [['outbound_id','client_id', 'expected_qty', 'accepted_qty', 'status', 'begin_datetime', 'end_datetime', 'date_confirm', 'kaspi_returned_at', 'created_user_id', 'updated_user_id', 'created_at', 'updated_at', 'deleted'], 'integer'],
             [['order_number'], 'string', 'max' => 36],
             [['customer_name'], 'string', 'max' => 256],
             [['city', 'client_ReferenceNumber'], 'string', 'max' => 128],
@@ -62,6 +65,7 @@ class EcommerceReturn extends \common\models\ActiveRecord
             [['client_IsRefundable'], 'string', 'max' => 28],
             [['client_RefundableMessage'], 'string', 'max' => 28],
             [['return_reason'], 'string', 'max' => 28],
+            [['source_kaspi_order_id', 'source_kaspi_refund_code'], 'string', 'max' => 64],
         ];
     }
 

@@ -2,21 +2,32 @@
 
 namespace stockDepartment\modules\kaspi\services;
 
-use common\ecommerce\entities\EcommerceInbound;
-use common\ecommerce\entities\EcommerceInboundItem;
+use common\ecommerce\constants\ReturnOutboundStatus;
 use common\ecommerce\entities\EcommerceOutbound;
+use common\ecommerce\entities\EcommerceOutboundItem;
+use common\ecommerce\entities\EcommerceReturn;
+use common\ecommerce\entities\EcommerceReturnItem;
 use common\ecommerce\entities\EcommerceStock;
-use stockDepartment\modules\kaspi\dto\PartialReturnRequestDto;
 use stockDepartment\modules\kaspi\enums\OrderStatus;
 use Yii;
 use yii\base\Component;
+use yii\db\Query;
 
 /**
  * Сервис для сценариев возврата заказа Kaspi.
  *
- * Сценарий A — отмена до доставки: товар не покидал склад, снимаем резерв.
- * Сценарий B — частичный возврат после доставки: оператор заводит Inbound return,
- * физическая приёмка идёт через существующий inbound-флоу.
+ * Стратегия:
+ *  - Kaspi poll по статусу KASPI_DELIVERY_RETURN_REQUESTED.
+ *  - Для каждого найденного заказа читаем payload возврата
+ *    (refundCode + список возвращаемых SKU с их qty — может быть меньше отгруженного).
+ *  - Создаём EcommerceReturn + EcommerceReturnItem только на возвращаемые позиции.
+ *  - Привязываем ровно N строк ecommerce_stock (N = qty возврата) — остальные
+ *    продолжают оставаться зарезервированными под outbound.
+ *  - Оператор идёт на форму /alix/ecommerce/returns/scanning/index и сканирует.
+ *
+ * Идемпотентность: по паре (source_kaspi_order_id, source_kaspi_refund_code).
+ * Клиент может сделать несколько частичных возвратов по одному orderId —
+ * каждый со своим refundCode, каждый попадает в отдельный EcommerceReturn.
  */
 class OrderReturnService extends Component
 {
@@ -39,11 +50,8 @@ class OrderReturnService extends Component
     }
 
     /**
-     * Сценарий A: отменить заказ в Kaspi и вернуть зарезервированные строки стока в YES.
-     *
-     * @param string      $kaspiOrderId Kaspi order id (external_order_number в EcommerceOutbound)
-     * @param string|null $reason       Причина отмены для Kaspi
-     * @return array
+     * Снять резерв до доставки: cancelOrder в Kaspi + вернуть строки стока в YES.
+     * Используется, если отмена происходит до отгрузки (не через возвратный flow).
      */
     public function returnToStock($kaspiOrderId, $reason = null)
     {
@@ -88,82 +96,11 @@ class OrderReturnService extends Component
     }
 
     /**
-     * Сценарий B: создать Inbound return с привязкой к Kaspi-заказу.
-     * Физическая приёмка идёт дальше в обычном порядке.
+     * Опросить Kaspi на предмет запрошенных возвратов (KASPI_DELIVERY_RETURN_REQUESTED)
+     * и идемпотентно создать EcommerceReturn. Поддерживает частичные возвраты.
      */
-    public function createPartialReturn($kaspiOrderId, PartialReturnRequestDto $dto)
+    public function pollKaspiReturnsAndCreateEcomReturns()
     {
-        $outbound = EcommerceOutbound::find()
-            ->andWhere(['external_order_number' => $kaspiOrderId])
-            ->andWhere(['deleted' => 0])
-            ->one();
-
-        $now = time();
-        $userId = Yii::$app->has('user') && !Yii::$app->user->isGuest
-            ? (int) Yii::$app->user->id
-            : null;
-
-        $inbound = new EcommerceInbound();
-        $inbound->client_id                = $outbound !== null ? (int) $outbound->client_id : 0;
-        $inbound->order_number             = 'KASPI-RET-' . substr((string) $kaspiOrderId, 0, 20);
-        $inbound->expected_product_qty     = array_sum(array_column($dto->items, 'qty'));
-        $inbound->status                   = 0;
-        $inbound->source_kaspi_order_id    = (string) $kaspiOrderId;
-        $inbound->source_kaspi_refund_code = $dto->refund_code !== null ? (string) $dto->refund_code : '';
-        $inbound->created_user_id          = $userId;
-        $inbound->created_at               = $now;
-
-        if (!$inbound->save(false)) {
-            Yii::error('Failed to create Kaspi inbound return for order ' . $kaspiOrderId, 'kaspi.return');
-            return [
-                'status'  => 'error',
-                'message' => 'Failed to create inbound return',
-            ];
-        }
-
-        $itemsCount = 0;
-        foreach ($dto->items as $item) {
-            $guid = isset($item['product_guid']) ? (string) $item['product_guid'] : '';
-            $qty  = isset($item['qty']) ? (int) $item['qty'] : 0;
-            if ($guid === '' || $qty <= 0) {
-                continue;
-            }
-
-            $row = new EcommerceInboundItem();
-            $row->inbound_id           = (int) $inbound->id;
-            $row->client_lot_sku       = $guid;
-            $row->product_expected_qty = $qty;
-            $row->product_accepted_qty = 0;
-            $row->status               = 0;
-            $row->created_user_id      = $userId;
-            $row->created_at           = $now;
-            $row->save(false);
-            $itemsCount++;
-        }
-
-        return [
-            'status'           => 'OK',
-            'inbound_order_id' => (int) $inbound->id,
-            'kaspi_order_id'   => (string) $kaspiOrderId,
-            'items_count'      => $itemsCount,
-        ];
-    }
-
-    /**
-     * Опросить Kaspi на предмет возвратов и идемпотентно создать Inbound return'ы.
-     *
-     * По диаграмме flow: Kaspi подтверждает возврат на своей стороне → Nomadex
-     * подхватывает его через API (наш polling) → автоматически создаёт Inbound.
-     *
-     * Вызывается cron-экшеном (например, раз в 30 минут).
-     * Идемпотентность: пропускаем Kaspi-заказы, для которых уже есть Inbound
-     * с тем же source_kaspi_order_id.
-     *
-     * @return array
-     */
-    public function pollKaspiReturnsAndCreateInbounds()
-    {
-        // Kaspi фильтр по статусу заказа — забираем запрошенные возвраты.
         $params = [
             'filter[orders][status]' => OrderStatus::ORDER_KASPI_DELIVERY_RETURN_REQUESTED,
         ];
@@ -180,11 +117,12 @@ class OrderReturnService extends Component
 
         $orders = isset($page->orders) && is_array($page->orders) ? $page->orders : [];
         if (empty($orders)) {
-            return ['status' => 'OK', 'fetched' => 0, 'created' => 0, 'skipped' => 0];
+            return ['status' => 'OK', 'fetched' => 0, 'created' => 0, 'skipped' => 0, 'errors' => 0];
         }
 
         $created = 0;
         $skipped = 0;
+        $errors  = 0;
         $results = [];
 
         foreach ($orders as $order) {
@@ -195,32 +133,49 @@ class OrderReturnService extends Component
                 continue;
             }
 
-            $exists = EcommerceInbound::find()
-                ->andWhere(['source_kaspi_order_id' => $kaspiOrderId])
+            $returnRequest = $this->readReturnRequestFromKaspi($kaspiOrderId);
+            if (empty($returnRequest['items'])) {
+                Yii::warning(
+                    'Kaspi return poll: order ' . $kaspiOrderId . ' has no returnable entries — skipped',
+                    'kaspi.return'
+                );
+                $skipped++;
+                continue;
+            }
+
+            if ($this->returnExists($kaspiOrderId, $returnRequest['refund_code'])) {
+                $skipped++;
+                continue;
+            }
+
+            $outbound = EcommerceOutbound::find()
+                ->andWhere(['external_order_number' => $kaspiOrderId])
                 ->andWhere(['deleted' => 0])
-                ->exists();
-
-            if ($exists) {
+                ->one();
+            if ($outbound === null) {
+                Yii::warning(
+                    'Kaspi return poll: outbound not found for order ' . $kaspiOrderId . ' — skipped',
+                    'kaspi.return'
+                );
                 $skipped++;
                 continue;
             }
 
-            $dto = $this->buildPartialReturnDtoFromKaspi($kaspiOrderId);
-            if (empty($dto->items)) {
-                Yii::warning('Kaspi return poll: order ' . $kaspiOrderId . ' has no returnable entries', 'kaspi.return');
-                $skipped++;
-                continue;
-            }
-
-            $result = $this->createPartialReturn($kaspiOrderId, $dto);
+            $result = $this->createEcomReturnFromOutbound($outbound, $kaspiOrderId, $returnRequest);
             if (isset($result['status']) && $result['status'] === 'OK') {
                 $created++;
                 $results[] = [
-                    'kaspi_order_id'   => $kaspiOrderId,
-                    'inbound_order_id' => $result['inbound_order_id'],
+                    'kaspi_order_id' => $kaspiOrderId,
+                    'refund_code'    => $returnRequest['refund_code'],
+                    'return_id'      => $result['return_id'],
+                    'linked_stock'   => $result['linked_stock'],
                 ];
             } else {
-                Yii::error('Kaspi return poll: failed to create inbound for ' . $kaspiOrderId . ': ' . json_encode($result), 'kaspi.return');
+                $errors++;
+                Yii::error(
+                    'Kaspi return poll: failed to create return for ' . $kaspiOrderId . ': ' . json_encode($result),
+                    'kaspi.return'
+                );
             }
         }
 
@@ -229,62 +184,342 @@ class OrderReturnService extends Component
             'fetched' => count($orders),
             'created' => $created,
             'skipped' => $skipped,
+            'errors'  => $errors,
             'items'   => $results,
         ];
     }
 
     /**
-     * Собрать PartialReturnRequestDto по данным Kaspi: отдельно подтянуть позиции
-     * заказа через KaspiAPIService::getOrderEntries() и смапить в items.
+     * Ручное создание EcommerceReturn по Kaspi orderId — используется из UI-формы
+     * "Создать возврат" и как fallback когда poll пропустил заказ.
      *
-     * Ожидаемая структура ответа Kaspi — JSON:API: data[].attributes с полями
-     * { offer: {code, name}, quantity, entryNumber, totalPrice } и т.п.
+     * Для ручного режима читаем return payload так же, как poll. Идемпотентность
+     * по паре (orderId, refundCode) — повторный вызов без изменений в Kaspi
+     * вернёт 'exists'.
      *
-     * При ошибке или пустом ответе возвращает DTO с пустым items — caller должен это проверить.
+     * @param string $kaspiOrderId
+     * @return array ['status' => 'OK'|'exists'|'not_found'|'no_items'|'error', ...]
      */
-    private function buildPartialReturnDtoFromKaspi($kaspiOrderId)
+    public function createEcomReturnByKaspiOrderId($kaspiOrderId)
     {
-        $dto = new PartialReturnRequestDto();
-        $dto->note = 'Auto-created from Kaspi poll';
+        $kaspiOrderId = trim((string) $kaspiOrderId);
+        if ($kaspiOrderId === '') {
+            return ['status' => 'error', 'message' => 'Empty kaspi order id'];
+        }
 
-        $items = [];
+        $returnRequest = $this->readReturnRequestFromKaspi($kaspiOrderId);
+        if (empty($returnRequest['items'])) {
+            return ['status' => 'no_items', 'message' => 'Kaspi вернул пустой список позиций возврата'];
+        }
+
+        if ($this->returnExists($kaspiOrderId, $returnRequest['refund_code'])) {
+            $existing = EcommerceReturn::find()
+                ->andWhere([
+                    'source_kaspi_order_id' => $kaspiOrderId,
+                    'source_kaspi_refund_code' => $returnRequest['refund_code'],
+                ])
+                ->andWhere(['deleted' => 0])
+                ->one();
+            return [
+                'status'    => 'exists',
+                'return_id' => $existing ? (int) $existing->id : 0,
+            ];
+        }
+
+        $outbound = EcommerceOutbound::find()
+            ->andWhere(['external_order_number' => $kaspiOrderId])
+            ->andWhere(['deleted' => 0])
+            ->one();
+        if ($outbound === null) {
+            return [
+                'status'  => 'not_found',
+                'message' => 'Outbound with external_order_number=' . $kaspiOrderId . ' not found',
+            ];
+        }
+
+        return $this->createEcomReturnFromOutbound($outbound, $kaspiOrderId, $returnRequest);
+    }
+
+    /**
+     * @param EcommerceOutbound $outbound
+     * @param string            $kaspiOrderId
+     * @param array             $returnRequest ['refund_code' => '...', 'items' => [['sku' => '...', 'qty' => N], ...]]
+     * @return array
+     */
+    private function createEcomReturnFromOutbound(EcommerceOutbound $outbound, $kaspiOrderId, array $returnRequest)
+    {
+        $now = time();
+        $refundCode = (string) $returnRequest['refund_code'];
+        $requestedItems = $returnRequest['items'];
+
+        $expectedTotal = 0;
+        foreach ($requestedItems as $it) {
+            $expectedTotal += (int) $it['qty'];
+        }
+
+        $transaction = Yii::$app->db->beginTransaction();
+        try {
+            $return = new EcommerceReturn();
+            $return->client_id                = (int) $outbound->client_id;
+            $return->outbound_id              = (int) $outbound->id;
+            $return->order_number             = (string) $outbound->order_number;
+            $return->customer_name            = (string) $outbound->customer_name;
+            $return->city                     = '';
+            $return->customer_address         = '';
+            $return->expected_qty             = $expectedTotal;
+            $return->accepted_qty             = 0;
+            $return->status                   = ReturnOutboundStatus::_NEW;
+            $return->source_kaspi_order_id    = $kaspiOrderId;
+            $return->source_kaspi_refund_code = $refundCode;
+            $return->created_at               = $now;
+            $return->updated_at               = $now;
+            $return->deleted                  = 0;
+
+            if (!$return->save(false)) {
+                throw new \RuntimeException('Failed to save EcommerceReturn for ' . $kaspiOrderId);
+            }
+
+            $linkedStock = 0;
+            foreach ($requestedItems as $reqItem) {
+                $sku = (string) $reqItem['sku'];
+                $qty = (int) $reqItem['qty'];
+                if ($sku === '' || $qty <= 0) {
+                    continue;
+                }
+
+                // Kaspi даёт productCode (article), в ecommerce_outbound_items.product_sku
+                // у нас лежит GUID из product_v2 — нужна резолюция.
+                $guid = $this->resolveKaspiSkuToGuid($sku);
+                if ($guid === '') {
+                    Yii::warning(
+                        "Kaspi return poll: sku '{$sku}' не резолвится в product_v2.guid — позиция пропущена",
+                        'kaspi.return'
+                    );
+                    continue;
+                }
+
+                $oItem = EcommerceOutboundItem::find()
+                    ->andWhere(['outbound_id' => (int) $outbound->id])
+                    ->andWhere(['product_sku' => $guid])
+                    ->andWhere(['deleted' => 0])
+                    ->one();
+                if ($oItem === null) {
+                    Yii::warning(
+                        "Kaspi return poll: в outbound {$outbound->id} нет позиции с product_sku={$guid} — пропущена",
+                        'kaspi.return'
+                    );
+                    continue;
+                }
+
+                $rItem = new EcommerceReturnItem();
+                $rItem->return_id       = (int) $return->id;
+                $rItem->product_id      = (int) $oItem->product_id;
+                $rItem->product_barcode = $this->resolveProductBarcode($oItem);
+                $rItem->expected_qty    = $qty;
+                $rItem->accepted_qty    = 0;
+                $rItem->status          = ReturnOutboundStatus::_NEW;
+                $rItem->created_at      = $now;
+                $rItem->updated_at      = $now;
+                $rItem->deleted         = 0;
+                if (!$rItem->save(false)) {
+                    throw new \RuntimeException('Failed to save EcommerceReturnItem for sku=' . $sku);
+                }
+
+                // Берём ровно $qty свободных (ещё не привязанных к какому-либо возврату)
+                // сток-строк из того же outbound_item.
+                $stockIds = EcommerceStock::find()
+                    ->select('id')
+                    ->andWhere(['outbound_id' => (int) $outbound->id])
+                    ->andWhere(['outbound_item_id' => (int) $oItem->id])
+                    ->andWhere(['or', ['return_id' => 0], ['return_id' => null]])
+                    ->andWhere(['deleted' => 0])
+                    ->orderBy(['id' => SORT_ASC])
+                    ->limit($qty)
+                    ->column();
+
+                if (count($stockIds) < $qty) {
+                    Yii::warning(
+                        "Kaspi return poll: по sku={$sku} найдено только "
+                        . count($stockIds) . " свободных сток-строк из {$qty} требуемых",
+                        'kaspi.return'
+                    );
+                }
+
+                if (!empty($stockIds)) {
+                    $linkedStock += (int) EcommerceStock::updateAll(
+                        [
+                            'return_id'          => (int) $return->id,
+                            'return_item_id'     => (int) $rItem->id,
+                            'kaspi_order_status' => OrderStatus::ORDER_KASPI_DELIVERY_RETURN_REQUESTED,
+                            'updated_at'         => $now,
+                        ],
+                        ['id' => $stockIds]
+                    );
+                }
+            }
+
+            $transaction->commit();
+
+            return [
+                'status'       => 'OK',
+                'return_id'    => (int) $return->id,
+                'linked_stock' => $linkedStock,
+            ];
+        } catch (\Exception $e) {
+            $transaction->rollBack();
+            Yii::error('Kaspi return create failed: ' . $e->getMessage(), 'kaspi.return');
+            return [
+                'status'  => 'error',
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Подтвердить в Kaspi завершение возврата — переводит заказ в RETURNED.
+     * Вызывается после финального подтверждения возврата в Nomadex.
+     *
+     * Ответ Kaspi логируется с меткой 'kaspi.return.response' (runtime/logs/app.log).
+     * Fiscal-чек возврата через API у Kaspi напрямую не отдаётся, но в будущем
+     * в ответе могут появиться поля вроде refundReceiptUrl / refundedAt —
+     * по логам увидим.
+     */
+    public function confirmReturnCompleted($kaspiOrderId)
+    {
+        $kaspiOrderId = (string) $kaspiOrderId;
+        $response = $this->api->changeOrderStatus($kaspiOrderId, OrderStatus::ORDER_RETURNED);
+
+        Yii::info(
+            'Kaspi RETURNED response for order ' . $kaspiOrderId . ': '
+            . json_encode($response, JSON_UNESCAPED_UNICODE),
+            'kaspi.return.response'
+        );
+
+        return $response;
+    }
+
+    /**
+     * Прочитать payload возврата из Kaspi. Возвращает нормализованную структуру:
+     *  ['refund_code' => string, 'items' => [['sku' => string (productCode), 'qty' => int], ...]]
+     *
+     * TODO: когда появится реальный sample ответа Kaspi на partial-return
+     * (поля refundCode, returnedQuantity на entries и/или отдельный /v2/returns),
+     * подменить на парсер реального payload. Сейчас используем getOrderEntries:
+     *   - qty = returnedQuantity, если есть (для partial);
+     *   - иначе = quantity (полный возврат).
+     * refund_code берётся из ответа, если присутствует, иначе синтезируется
+     * из orderId (idempotency всё равно работает, просто повторный poll того же
+     * orderId без refund_code будет "уже существует").
+     *
+     * @param string $kaspiOrderId
+     * @return array
+     */
+    private function readReturnRequestFromKaspi($kaspiOrderId)
+    {
         try {
             $response = $this->api->getOrderEntries($kaspiOrderId);
         } catch (\Exception $e) {
             Yii::error('Kaspi getOrderEntries failed for ' . $kaspiOrderId . ': ' . $e->getMessage(), 'kaspi.return');
-            $dto->items = [];
-            return $dto;
+            return ['refund_code' => '', 'items' => []];
         }
 
         $entries = isset($response['data']) && is_array($response['data']) ? $response['data'] : [];
+
+        $refundCode = '';
+        if (isset($response['refundCode']) && $response['refundCode'] !== '') {
+            $refundCode = (string) $response['refundCode'];
+        } elseif (isset($response['meta']['refundCode']) && $response['meta']['refundCode'] !== '') {
+            $refundCode = (string) $response['meta']['refundCode'];
+        } else {
+            // Синтетический fallback — чтобы (orderId, refundCode) уникально идентифицировали возврат.
+            $refundCode = 'RF-' . substr((string) $kaspiOrderId, 0, 16);
+        }
+
+        $items = [];
         foreach ($entries as $entry) {
             $attrs = isset($entry['attributes']) && is_array($entry['attributes']) ? $entry['attributes'] : [];
-            $sku = null;
-            if (isset($attrs['offer']) && is_array($attrs['offer']) && isset($attrs['offer']['code'])) {
-                $sku = (string) $attrs['offer']['code'];
+
+            $sku = '';
+            if (isset($attrs['productCode'])) {
+                $sku = (string) $attrs['productCode'];
             } elseif (isset($attrs['merchantProductCode'])) {
                 $sku = (string) $attrs['merchantProductCode'];
+            } elseif (isset($attrs['offer']['code'])) {
+                $sku = (string) $attrs['offer']['code'];
             }
-            $qty = isset($attrs['quantity']) ? (int) $attrs['quantity'] : 0;
 
-            if ($sku !== null && $sku !== '' && $qty > 0) {
-                $items[] = ['product_guid' => $sku, 'qty' => $qty];
+            $qty = 0;
+            if (isset($attrs['returnedQuantity']) && (int) $attrs['returnedQuantity'] > 0) {
+                $qty = (int) $attrs['returnedQuantity'];
+            } elseif (isset($attrs['quantity'])) {
+                $qty = (int) $attrs['quantity'];
             }
+
+            if ($sku === '' || $qty <= 0) {
+                continue;
+            }
+
+            $items[] = ['sku' => $sku, 'qty' => $qty];
         }
-        $dto->items = $items;
 
-        return $dto;
+        return ['refund_code' => $refundCode, 'items' => $items];
     }
 
     /**
-     * Подтвердить в Kaspi завершение возврата (вызывается после Окончательного
-     * подтверждения возврата в Nomadex).
-     *
-     * Переводит Kaspi-заказ в статус RETURNED — это триггерит на стороне Kaspi
-     * регистрацию возврата на кассе и перевод денег покупателю.
+     * @param string $kaspiOrderId
+     * @param string $refundCode
+     * @return bool
      */
-    public function confirmReturnCompleted($kaspiOrderId)
+    private function returnExists($kaspiOrderId, $refundCode)
     {
-        return $this->api->changeOrderStatus((string) $kaspiOrderId, OrderStatus::ORDER_RETURNED);
+        return EcommerceReturn::find()
+            ->andWhere([
+                'source_kaspi_order_id'    => $kaspiOrderId,
+                'source_kaspi_refund_code' => $refundCode,
+            ])
+            ->andWhere(['deleted' => 0])
+            ->exists();
+    }
+
+    /**
+     * Kaspi productCode (= article) → product_v2.guid, которым хранится product_sku
+     * в ecommerce_outbound_items.
+     */
+    private function resolveKaspiSkuToGuid($kaspiSku)
+    {
+        if ($kaspiSku === '') {
+            return '';
+        }
+        $row = (new Query())
+            ->select(['guid'])
+            ->from('product_v2')
+            ->andWhere(['or', ['article' => $kaspiSku], ['guid' => $kaspiSku]])
+            ->one();
+        return $row && !empty($row['guid']) ? (string) $row['guid'] : '';
+    }
+
+    /**
+     * OrderImportService пишет в ecommerce_outbound_items только product_sku (guid);
+     * physical barcode берём либо из самого outbound-item, либо из product_v2 по guid.
+     */
+    private function resolveProductBarcode(EcommerceOutboundItem $oItem)
+    {
+        $fromItem = (string) $oItem->product_barcode;
+        if ($fromItem !== '') {
+            return $fromItem;
+        }
+
+        $sku = (string) $oItem->product_sku;
+        if ($sku === '') {
+            return '';
+        }
+
+        $row = (new Query())
+            ->select(['barcode'])
+            ->from('product_v2')
+            ->andWhere(['guid' => $sku])
+            ->one();
+
+        return $row && !empty($row['barcode']) ? (string) $row['barcode'] : '';
     }
 }

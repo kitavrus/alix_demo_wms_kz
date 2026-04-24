@@ -756,16 +756,17 @@ class CronController extends Controller
         $service = new OrderReturnService();
         $service->init();
 
-        $result = $service->pollKaspiReturnsAndCreateInbounds();
+        $result = $service->pollKaspiReturnsAndCreateEcomReturns();
 
         $fetched = isset($result['fetched']) ? (int) $result['fetched'] : 0;
         $created = isset($result['created']) ? (int) $result['created'] : 0;
         $skipped = isset($result['skipped']) ? (int) $result['skipped'] : 0;
+        $errors  = isset($result['errors']) ? (int) $result['errors'] : 0;
         $status  = isset($result['status']) ? (string) $result['status'] : 'unknown';
 
-        echo "Kaspi return polling: status={$status}, fetched={$fetched}, created={$created}, skipped={$skipped}\n";
+        echo "Kaspi return polling: status={$status}, fetched={$fetched}, created={$created}, skipped={$skipped}, errors={$errors}\n";
 
-        return $status === 'OK' ? 0 : 1;
+        return ($status === 'OK' && $errors === 0) ? 0 : 1;
     }
 
     /**
