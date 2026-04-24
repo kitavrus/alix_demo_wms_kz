@@ -28,6 +28,10 @@ use Yii;
  * @property int $deleted Deleted
  * @property string $source_kaspi_order_id ID оригинального Kaspi-заказа (для возвратов)
  * @property string $source_kaspi_refund_code Код возврата на стороне Kaspi
+ * @property string $client_order_id UUID документа на стороне 1С
+ * @property int $from_point_id Точка отгрузки (Store.id)
+ * @property int $supplier_id Поставщик (legacy-совместимость)
+ * @property string $comments
  */
 class EcommerceInbound extends \common\models\ActiveRecord
 {
@@ -45,10 +49,28 @@ class EcommerceInbound extends \common\models\ActiveRecord
     public function rules()
     {
         return [
-            [['date_confirm','client_id', 'expected_box_qty', 'accepted_box_qty', 'expected_lot_qty', 'accepted_lot_qty', 'expected_product_qty', 'accepted_product_qty', 'status', 'begin_datetime', 'end_datetime', 'created_user_id', 'updated_user_id', 'created_at', 'updated_at', 'deleted'], 'integer'],
+            [['date_confirm','client_id', 'expected_box_qty', 'accepted_box_qty', 'expected_lot_qty', 'accepted_lot_qty', 'expected_product_qty', 'accepted_product_qty', 'status', 'begin_datetime', 'end_datetime', 'created_user_id', 'updated_user_id', 'created_at', 'updated_at', 'deleted', 'from_point_id', 'supplier_id'], 'integer'],
             [['party_number', 'order_number'], 'string', 'max' => 36],
-            [['source_kaspi_order_id', 'source_kaspi_refund_code'], 'string', 'max' => 64],
+            [['source_kaspi_order_id', 'source_kaspi_refund_code', 'client_order_id'], 'string', 'max' => 64],
+            [['comments'], 'string'],
         ];
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getOrderItems()
+    {
+        return $this->hasMany(EcommerceInboundItem::className(), ['inbound_id' => 'id']);
+    }
+
+    /**
+     * Сколько продуктов принято по накладной.
+     */
+    public static function getCountItemByID($id)
+    {
+        $m = self::findOne($id);
+        return $m ? (int)$m->accepted_product_qty : 0;
     }
 
     /**

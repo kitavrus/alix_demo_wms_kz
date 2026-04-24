@@ -2,9 +2,9 @@
 
 namespace stockDepartment\modules\alix\controllers\ecommerce\api\v1;
 
-use stockDepartment\modules\alix\controllers\outbound\domain\constants\OutboundAPIStatus;
-use stockDepartment\modules\alix\controllers\outbound\domain\mapper\OutboundAPIMapper;
-use stockDepartment\modules\alix\controllers\outbound\domain\OutboundService;
+use stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\constants\OutboundAPIStatus;
+use stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\mapper\OutboundAPIMapper;
+use stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\OutboundService;
 use Yii;
 use yii\filters\AccessControl;
 use yii\filters\auth\HttpBearerAuth;
@@ -12,8 +12,8 @@ use yii\httpclient\Client as HttpClient;
 use yii\rest\Controller;
 use yii\web\BadRequestHttpException;
 use stockDepartment\modules\alix\controllers\common\notify\TelegramIntermodeB2CNotification;
-use stockDepartment\modules\alix\controllers\outbound\domain\OutboundReservationService;
-use stockDepartment\modules\alix\controllers\outbound\domain\repository\OutboundRepository;
+use stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\OutboundReservationService;
+use stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\repository\OutboundRepository;
 
 
 // /intermode/ecommerce/api/v1/outbound/orders

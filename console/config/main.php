@@ -19,9 +19,9 @@ return [
         'kaspi' => [
             'class'         => 'stockDepartment\modules\kaspi\kaspi',
             'apiToken'      => '+vWV5nZLFOVPEisce0YR9doMiBlv0NKfclVukFWP1SM=',
-            'useMock'       => false,
+            'useMock'       => true,
             'httpLog'       => true,
-            'kaspiClientId' => 103,
+            'kaspiClientId' => \common\modules\client\models\Client::CLIENT_ALIXAVIEN,
         ],
     ],
     'components' => [

@@ -7,13 +7,13 @@ use stockDepartment\modules\kaspi\services\KaspiOrderHydrator;
 /** Моки ответов Kaspi API (useMock). */
 class KaspiMockFactory
 {
-    private static $defaultOrderId = 'ODk2ODg0NjEw';
-    private static $defaultEntryId = 'ODk2ODg0NjEwIyMw';
+    private static $defaultOrderId = 'ODk3MDE1NDMx';
+    private static $defaultEntryId = 'ODk3MDE1NDMxIyMw';
     private static $defaultCustomerId = 'NzAyNjM4NTcwNQ';
     // Артикул реального товара для поллинга через cron/kaspi-poll-orders —
     // должен существовать в product_v2 / ecommerce_stock, иначе импорт упадёт на резерве.
-    private static $defaultProductCode = '1100005012';
-    private static $defaultProductName = 'ЖИДКИЙ КОНСИЛЕР 101 LIGHT IVORY';
+    private static $defaultProductCode = '1100015431';
+    private static $defaultProductName = 'SOS-крем';
     private static $defaultProductPrice = 4990;
 
     private static function getSampleOrderResource($orderId = null)

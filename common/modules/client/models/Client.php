@@ -65,6 +65,11 @@ class Client extends ActiveRecord
     const CLIENT_KOTON = 21;
     const CLIENT_AKMARAL = 66;
 	const CLIENT_ERENRETAIL = 103;
+    // Алиас для того же клиента (id=103). Исторически в БД под этим id
+    // был ErenRetail, сейчас — AlixAvien. В новом коде (Kaspi / ecommerce
+    // возвраты и т.п.) используем CLIENT_ALIXAVIEN; CLIENT_ERENRETAIL
+    // остаётся для обратной совместимости со старыми флоу.
+    const CLIENT_ALIXAVIEN = self::CLIENT_ERENRETAIL;
     /*
      *
      * */

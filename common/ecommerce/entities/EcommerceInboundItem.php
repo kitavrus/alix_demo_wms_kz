@@ -25,6 +25,13 @@ use Yii;
  * @property int $created_at Created at
  * @property int $updated_at Updated at
  * @property int $deleted Deleted
+ * @property string $product_sku
+ * @property string $product_name
+ * @property string $product_model
+ * @property string $product_brand
+ * @property string $product_color
+ * @property int $begin_datetime
+ * @property int $end_datetime
  */
 class EcommerceInboundItem extends \common\models\ActiveRecord
 {
@@ -42,9 +49,30 @@ class EcommerceInboundItem extends \common\models\ActiveRecord
     public function rules()
     {
         return [
-            [['api_status','inbound_id', 'product_id', 'product_expected_qty', 'product_accepted_qty', 'status', 'created_user_id', 'updated_user_id', 'created_at', 'updated_at', 'deleted'], 'integer'],
+            [['api_status','inbound_id', 'product_id', 'product_expected_qty', 'product_accepted_qty', 'status', 'created_user_id', 'updated_user_id', 'created_at', 'updated_at', 'deleted', 'begin_datetime', 'end_datetime'], 'integer'],
             [['client_box_barcode', 'client_inbound_id', 'client_lot_sku', 'our_box_barcode', 'lot_barcode', 'product_barcode'], 'string', 'max' => 18],
+            [['product_sku', 'product_name', 'product_model', 'product_color'], 'string', 'max' => 128],
+            [['product_brand'], 'string', 'max' => 1024],
         ];
+    }
+
+    /**
+     * Сколько продуктов в коробе по накладной уже отсканировано.
+     *
+     * @param string $boxBarcode
+     * @param int    $inboundId
+     * @return int
+     */
+    public static function getScannedProductInBox($boxBarcode, $inboundId)
+    {
+        return (int)\common\ecommerce\entities\EcommerceStock::find()->andWhere([
+            'inbound_id' => $inboundId,
+            'box_address_barcode' => $boxBarcode,
+            'status' => [
+                \common\ecommerce\entities\EcommerceStock::STATUS_INBOUND_SCANNED,
+                \common\ecommerce\entities\EcommerceStock::STATUS_INBOUND_OVER_SCANNED,
+            ],
+        ])->count();
     }
 
     /**
