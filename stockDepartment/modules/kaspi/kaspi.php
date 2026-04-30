@@ -55,6 +55,15 @@ class kaspi extends Module
     /** @var int Окно poll по creationDate для OrderImportService (часы) */
     public $orderPollWindowHours = 6;
 
+    /**
+     * Окно poll для второго прохода по ACCEPTED_BY_MERCHANT, в часах.
+     * Подбирает заказы, принятые Kaspi auto-accept'ом (~20сек) или мерчантом
+     * до того, как наш cron успел их забрать.
+     *
+     * @var int
+     */
+    public $orderAcceptedPollWindowHours = 24;
+
     /** @var int client_id по умолчанию для Kaspi-заказов */
     public $kaspiClientId = 0;
 
@@ -91,6 +100,7 @@ class kaspi extends Module
         $this->set('orderImportService', [
             'class' => OrderImportService::class,
             'pollWindowHours' => (int) $this->orderPollWindowHours,
+            'acceptedPollWindowHours' => (int) $this->orderAcceptedPollWindowHours,
             'defaultClientId' => (int) $this->kaspiClientId,
         ]);
         $this->set('orderStatusSyncService', [
