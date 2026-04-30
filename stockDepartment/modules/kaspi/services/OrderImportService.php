@@ -16,26 +16,40 @@ use yii\db\Query;
 /**
  * Импорт новых заказов из Kaspi (poll cron).
  *
- * Poll: GET /v2/orders с фильтром
- *   filter[orders][status]   = APPROVED_BY_BANK
- *   filter[orders][state]    = NEW
- *   creationDate[$ge/$le]    = окно последних N часов (по умолчанию 6)
+ * Делает ДВА прохода:
  *
- * Для каждого нового заказа:
+ * Проход 1 — APPROVED_BY_BANK / NEW (окно pollWindowHours, по умолчанию 6ч):
  *   1) Идемпотентно находит/создаёт EcommerceOutbound по external_order_number.
  *   2) Тянет позиции через getOrderEntries и пишет EcommerceOutboundItem.
  *   3) Резервирует нужное количество строк ecommerce_stock (status_availability=YES)
- *      по product_sku (merchantProductCode из Kaspi = product_sku в нашей БД, без маппинга).
+ *      по product_sku (merchantProductCode из Kaspi = product_sku в нашей БД).
  *   4) При достаточном стоке — POST acceptOrder в Kaspi; при нехватке —
  *      откат транзакции и cancelOrder(MERCHANT_OUT_OF_STOCK).
+ *
+ * Проход 2 — ACCEPTED_BY_MERCHANT (окно acceptedPollWindowHours, по умолчанию 24ч):
+ *   Подбирает заказы, которые уже принял Kaspi (auto-accept ~20сек) или мерчант
+ *   в кабинете до того, как мы успели дотянуться. Для них:
+ *     - НЕ вызываем acceptOrder (заказ уже принят)
+ *     - НЕ вызываем cancelOrder при нехватке стока — только лог, разруливает админ.
+ *   external_kaspi_status сразу выставляется в ACCEPTED_BY_MERCHANT.
  */
 class OrderImportService extends Component
 {
     /** @var KaspiAPIService|null */
     public $api;
 
-    /** @var int Окно poll по creationDate, в часах. */
+    /** @var int Окно poll по creationDate для APPROVED_BY_BANK, в часах. */
     public $pollWindowHours = 6;
+
+    /**
+     * Окно poll для ACCEPTED_BY_MERCHANT (заказов, принятых не нами), в часах.
+     * Шире, чем pollWindowHours: страхует от простоя cron'а — у Kaspi
+     * auto-accept ~20сек, поэтому к моменту следующего прохода заказ
+     * почти всегда уже не в NEW/APPROVED_BY_BANK.
+     *
+     * @var int
+     */
+    public $acceptedPollWindowHours = 24;
 
     /** @var int Размер страницы запроса к Kaspi. */
     public $pageSize = 100;
@@ -61,26 +75,81 @@ class OrderImportService extends Component
     /**
      * Забрать новые заказы Kaspi и импортировать их в EcommerceOutbound.
      *
+     * Два прохода:
+     *   1) APPROVED_BY_BANK / state=NEW (pollWindowHours): обычный путь, с acceptOrder.
+     *   2) ACCEPTED_BY_MERCHANT (acceptedPollWindowHours): подбор заказов, принятых
+     *      Kaspi auto-accept'ом или мерчантом до нашего cron'а; без acceptOrder
+     *      и без cancelOrder при нехватке стока.
+     *
      * @return array
      */
     public function pollAndImportNew()
     {
-        $nowMs     = (int) floor(microtime(true) * 1000);
-        $fromMs    = (int) floor((time() - $this->pollWindowHours * 3600) * 1000);
+        $approvedResult = $this->pollByStatus(
+            OrderStatus::ORDER_APPROVED_BY_BANK,
+            'NEW',
+            $this->pollWindowHours,
+            false
+        );
+        if ($approvedResult['status'] === 'error') {
+            return $approvedResult;
+        }
+
+        $acceptedResult = $this->pollByStatus(
+            OrderStatus::ORDER_ACCEPTED_BY_MERCHANT,
+            null,
+            $this->acceptedPollWindowHours,
+            true
+        );
+        if ($acceptedResult['status'] === 'error') {
+            return $acceptedResult;
+        }
+
+        return [
+            'status'              => 'OK',
+            'fetched'             => $approvedResult['fetched'] + $acceptedResult['fetched'],
+            'imported'            => $approvedResult['imported'] + $acceptedResult['imported'],
+            'skipped_existing'    => $approvedResult['skipped_existing'] + $acceptedResult['skipped_existing'],
+            'failed_no_stock'     => $approvedResult['failed_no_stock'] + $acceptedResult['failed_no_stock'],
+            'errors'              => $approvedResult['errors'] + $acceptedResult['errors'],
+            'approved_by_bank'    => $approvedResult,
+            'accepted_by_merchant'=> $acceptedResult,
+        ];
+    }
+
+    /**
+     * Опросить Kaspi по конкретному status и обработать выдачу.
+     *
+     * @param string      $status            Один из OrderStatus::ORDER_*.
+     * @param string|null $state             StateOrder или null (без фильтра по state).
+     * @param int         $windowHours       Окно по creationDate, в часах.
+     * @param bool        $alreadyAccepted   true — заказ уже принят Kaspi/мерчантом
+     *                                       (без acceptOrder, без cancelOrder при no-stock).
+     * @return array
+     */
+    private function pollByStatus($status, $state, $windowHours, $alreadyAccepted)
+    {
+        $nowMs  = (int) floor(microtime(true) * 1000);
+        $fromMs = (int) floor((time() - $windowHours * 3600) * 1000);
 
         $params = [
-            'filter[orders][status]'               => OrderStatus::ORDER_APPROVED_BY_BANK,
-            'filter[orders][state]'                => 'NEW',
-            'filter[orders][creationDate][$ge]'    => (string) $fromMs,
-            'filter[orders][creationDate][$le]'    => (string) $nowMs,
-            'page[number]'                         => 0,
-            'page[size]'                           => max(1, (int) $this->pageSize),
+            'filter[orders][status]'            => $status,
+            'filter[orders][creationDate][$ge]' => (string) $fromMs,
+            'filter[orders][creationDate][$le]' => (string) $nowMs,
+            'page[number]'                      => 0,
+            'page[size]'                        => max(1, (int) $this->pageSize),
         ];
+        if ($state !== null && $state !== '') {
+            $params['filter[orders][state]'] = $state;
+        }
 
         try {
             $page = $this->api->getOrdersPage($params);
         } catch (\Exception $e) {
-            Yii::error('Kaspi order poll failed: ' . $e->getMessage(), 'kaspi.orders');
+            Yii::error(
+                'Kaspi order poll failed (status=' . $status . '): ' . $e->getMessage(),
+                'kaspi.orders'
+            );
             return [
                 'status'  => 'error',
                 'message' => $e->getMessage(),
@@ -88,16 +157,6 @@ class OrderImportService extends Component
         }
 
         $orders = isset($page->orders) && is_array($page->orders) ? $page->orders : [];
-        if (empty($orders)) {
-            return [
-                'status'           => 'OK',
-                'fetched'          => 0,
-                'imported'         => 0,
-                'skipped_existing' => 0,
-                'failed_no_stock'  => 0,
-                'errors'           => 0,
-            ];
-        }
 
         $imported = 0;
         $skipped  = 0;
@@ -140,7 +199,11 @@ class OrderImportService extends Component
 
             $entries = self::resolveArticlesToGuids($entries);
 
-            $importResult = $this->importSingleOrder($order, $entries);
+            $initialKaspiStatus = $alreadyAccepted
+                ? OrderStatus::ORDER_ACCEPTED_BY_MERCHANT
+                : OrderStatus::ORDER_APPROVED_BY_BANK;
+
+            $importResult = $this->importSingleOrder($order, $entries, $initialKaspiStatus);
 
             if ($importResult['status'] === 'OK') {
                 $imported++;
@@ -149,21 +212,23 @@ class OrderImportService extends Component
                     'outbound_id'    => $importResult['outbound_id'],
                 ];
 
-                try {
-                    $this->api->acceptOrder($kaspiOrderId);
-                    EcommerceOutbound::updateAll(
-                        [
-                            'external_kaspi_status' => OrderStatus::ORDER_ACCEPTED_BY_MERCHANT,
-                            'updated_at'            => time(),
-                        ],
-                        ['id' => (int) $importResult['outbound_id']]
-                    );
-                } catch (\Exception $e) {
-                    Yii::error(
-                        'Kaspi acceptOrder failed for ' . $kaspiOrderId . ': ' . $e->getMessage(),
-                        'kaspi.orders'
-                    );
-                    $errors++;
+                if (!$alreadyAccepted) {
+                    try {
+                        $this->api->acceptOrder($kaspiOrderId);
+                        EcommerceOutbound::updateAll(
+                            [
+                                'external_kaspi_status' => OrderStatus::ORDER_ACCEPTED_BY_MERCHANT,
+                                'updated_at'            => time(),
+                            ],
+                            ['id' => (int) $importResult['outbound_id']]
+                        );
+                    } catch (\Exception $e) {
+                        Yii::error(
+                            'Kaspi acceptOrder failed for ' . $kaspiOrderId . ': ' . $e->getMessage(),
+                            'kaspi.orders'
+                        );
+                        $errors++;
+                    }
                 }
             } elseif ($importResult['status'] === 'no_stock') {
                 $noStock++;
@@ -171,13 +236,21 @@ class OrderImportService extends Component
                     'kaspi_order_id' => $kaspiOrderId,
                     'missing'        => $importResult['missing'],
                 ];
-                try {
-                    $this->api->cancelOrder($kaspiOrderId, 'MERCHANT_OUT_OF_STOCK');
-                } catch (\Exception $e) {
+                if ($alreadyAccepted) {
                     Yii::error(
-                        'Kaspi cancelOrder failed for ' . $kaspiOrderId . ': ' . $e->getMessage(),
+                        'Kaspi order ' . $kaspiOrderId . ' (already ACCEPTED_BY_MERCHANT) has insufficient stock; '
+                        . 'manual intervention required: ' . json_encode($importResult['missing']),
                         'kaspi.orders'
                     );
+                } else {
+                    try {
+                        $this->api->cancelOrder($kaspiOrderId, 'MERCHANT_OUT_OF_STOCK');
+                    } catch (\Exception $e) {
+                        Yii::error(
+                            'Kaspi cancelOrder failed for ' . $kaspiOrderId . ': ' . $e->getMessage(),
+                            'kaspi.orders'
+                        );
+                    }
                 }
             } else {
                 $errors++;
@@ -204,17 +277,19 @@ class OrderImportService extends Component
      * Вся операция — в транзакции. При нехватке стока — откат.
      *
      * @param OrderDto $order
-     * @param array    $entries нормализованные позиции [{sku, qty, price}, ...]
+     * @param array    $entries            нормализованные позиции [{sku, qty, price}, ...]
+     * @param string   $initialKaspiStatus стартовый external_kaspi_status (APPROVED_BY_BANK
+     *                                     для проход 1, ACCEPTED_BY_MERCHANT для прохода 2).
      * @return array ['status' => 'OK'|'no_stock'|'error', 'outbound_id'?, 'missing'?]
      */
-    private function importSingleOrder(OrderDto $order, array $entries)
+    private function importSingleOrder(OrderDto $order, array $entries, $initialKaspiStatus = OrderStatus::ORDER_APPROVED_BY_BANK)
     {
         $transaction = Yii::$app->db->beginTransaction();
         try {
-            $outbound = $this->createOutbound($order, $entries);
+            $outbound = $this->createOutbound($order, $entries, $initialKaspiStatus);
             $this->createOutboundItems($outbound, $entries);
 
-            $missing = $this->reserveStock($outbound, $entries);
+            $missing = $this->reserveStock($outbound, $entries, $initialKaspiStatus);
             if (!empty($missing)) {
                 $transaction->rollBack();
                 return [
@@ -238,7 +313,7 @@ class OrderImportService extends Component
         }
     }
 
-    private function createOutbound(OrderDto $order, array $entries)
+    private function createOutbound(OrderDto $order, array $entries, $initialKaspiStatus = OrderStatus::ORDER_APPROVED_BY_BANK)
     {
         $now = time();
         $expectedQty = 0;
@@ -263,7 +338,7 @@ class OrderImportService extends Component
         $outbound->total_price            = (string) (float) $order->totalPrice;
         $outbound->status                 = Stock::STATUS_OUTBOUND_NEW;
         $outbound->api_status             = 0;
-        $outbound->external_kaspi_status  = OrderStatus::ORDER_APPROVED_BY_BANK;
+        $outbound->external_kaspi_status  = (string) $initialKaspiStatus;
         // OutboundListService::isOrderFromOtherCourierCompany сравнивает это поле
         // с выбранной в UI курьеркой; без него лист отгрузки отвергнет коробку.
         $outbound->client_ShipmentSource  = CourierCompany::PONY_EXPRESS_KASPI;
@@ -314,7 +389,7 @@ class OrderImportService extends Component
      *
      * Возвращает массив недостающих позиций [{sku, needed, available}], пустой если ок.
      */
-    private function reserveStock(EcommerceOutbound $outbound, array $entries)
+    private function reserveStock(EcommerceOutbound $outbound, array $entries, $initialKaspiStatus = OrderStatus::ORDER_APPROVED_BY_BANK)
     {
         $missing = [];
         $itemIdBySku = [];
@@ -354,7 +429,7 @@ class OrderImportService extends Component
                 'outbound_item_id'    => $itemId,
                 'status_availability' => EcommerceStock::STATUS_AVAILABILITY_RESERVED,
                 'status'              => Stock::STATUS_OUTBOUND_FULL_RESERVED,
-                'kaspi_order_status'  => OrderStatus::ORDER_APPROVED_BY_BANK,
+                'kaspi_order_status'  => (string) $initialKaspiStatus,
                 'updated_at'          => time(),
             ];
             if (!empty($e['product_name']))  { $updates['product_name']  = (string) $e['product_name']; }
