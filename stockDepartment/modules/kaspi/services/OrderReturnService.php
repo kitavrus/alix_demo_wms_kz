@@ -8,6 +8,7 @@ use common\ecommerce\entities\EcommerceOutboundItem;
 use common\ecommerce\entities\EcommerceReturn;
 use common\ecommerce\entities\EcommerceReturnItem;
 use common\ecommerce\entities\EcommerceStock;
+use common\modules\stock\models\Stock;
 use stockDepartment\modules\kaspi\dto\PartialReturnRequestDto;
 use stockDepartment\modules\kaspi\enums\OrderStatus;
 use Yii;
@@ -53,6 +54,11 @@ class OrderReturnService extends Component
     /**
      * Снять резерв до доставки: cancelOrder в Kaspi + вернуть строки стока в YES.
      * Используется, если отмена происходит до отгрузки (не через возвратный flow).
+     *
+     * Освобождаются ТОЛЬКО строки до фазы упаковки (PART_RESERVED/FULL_RESERVED).
+     * Уже отсканированные/упакованные (status=OUTBOUND_SCANNED, box_barcode заполнен)
+     * не трогаем — иначе физически в коробке товар, а в БД он «свободен» = дабл-аллокация.
+     * Для таких случаев нужен return-flow (`/alix/ecommerce/returns/scanning/*`).
      */
     public function returnToStock($kaspiOrderId, $reason = null)
     {
@@ -65,6 +71,31 @@ class OrderReturnService extends Component
             return [
                 'status'  => 'not_found',
                 'message' => 'Outbound order with external_order_number=' . $kaspiOrderId . ' not found',
+            ];
+        }
+
+        // Если хотя бы одна строка уже упакована/отгружена — отказываемся,
+        // чтобы caller осознанно пошёл в return-flow вместо «тихого» сброса.
+        $packedCount = (int) EcommerceStock::find()
+            ->andWhere(['outbound_id' => (int) $outbound->id])
+            ->andWhere(['deleted' => 0])
+            ->andWhere(['or',
+                ['status' => Stock::STATUS_OUTBOUND_SCANNED],
+                ['and', ['not', ['box_barcode' => null]], ['!=', 'box_barcode', '']],
+            ])
+            ->count();
+
+        if ($packedCount > 0) {
+            return [
+                'status'  => 'already_packed',
+                'message' => sprintf(
+                    'Outbound %d has %d packed/shipped stock rows — use return-flow '
+                    . '(scanning/index) or unpack manually before retrying',
+                    (int) $outbound->id,
+                    $packedCount
+                ),
+                'outbound_id'  => (int) $outbound->id,
+                'packed_rows'  => $packedCount,
             ];
         }
 
@@ -83,6 +114,10 @@ class OrderReturnService extends Component
                 'and',
                 ['outbound_id' => (int) $outbound->id],
                 ['status_availability' => EcommerceStock::STATUS_AVAILABILITY_RESERVED],
+                ['status' => [
+                    Stock::STATUS_OUTBOUND_PART_RESERVED,
+                    Stock::STATUS_OUTBOUND_FULL_RESERVED,
+                ]],
                 ['deleted' => 0],
             ]
         );
