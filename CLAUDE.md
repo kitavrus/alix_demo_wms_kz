@@ -81,12 +81,14 @@ Modules are registered in `stockDepartment/config/main.php`. Key modules:
 - `common/ecommerce/constants/` — shared status constants used across all modules
 
 ### Returns flow (important)
-Kaspi / Alix ecommerce returns are modeled as **inbound orders**, not as a separate return entity:
-- Header: `InboundOrder` (`inbound_orders`) with `order_type = InboundOrder::ORDER_TYPE_ECOMM_RETURN`
-- Lines: `InboundOrderItem` (`inbound_order_items`)
-- Physical scans per box: `EcommerceStock` (`ecommerce_stock`), joined by `inbound_id`
+**Все** ecommerce-возвраты (Kaspi, Alix, DeFacto) моделируются через `EcommerceReturn` + `EcommerceReturnItem` (таблицы `ecommerce_return`, `ecommerce_return_items`):
+- Header: `common\ecommerce\entities\EcommerceReturn` (`ecommerce_return`) — для Kaspi-источника заполняются `source_kaspi_order_id` и `source_kaspi_refund_code`.
+- Lines: `common\ecommerce\entities\EcommerceReturnItem` (`ecommerce_return_items`).
+- Привязка стока: `EcommerceStock.return_id` / `return_item_id`.
 
-The tables `ecommerce_return` and `ecommerce_return_items` (and models `EcommerceReturn*`) are **legacy DeFacto-only** schema — their columns carry DeFacto-specific `client_*` API fields. They are still read/written by `common/ecommerce/defacto/returnOutbound/service/ReturnService.php` and `stockDepartment/modules/ecommerce/controllers/defacto/ReportController.php`, but **do not use them for new Kaspi/Alix returns work** — use `InboundOrder` with `ORDER_TYPE_ECOMM_RETURN`.
+**Не используйте `InboundOrder` (`inbound_orders` с `ORDER_TYPE_ECOMM_RETURN`) и не используйте `EcommerceInbound` с `source_kaspi_order_id` для возвратов** — такие пути устарели/запрещены архитектурным правилом. Канонический сервис для Kaspi-возвратов: `stockDepartment\modules\kaspi\services\OrderReturnService` (poll, ручное создание, `confirmReturnCompleted`).
+
+Замечание про схему: миграция `m260421_130000_add_kaspi_source_to_ecommerce_inbound.php` оставила поля `source_kaspi_order_id` / `source_kaspi_refund_code` на таблице `ecommerce_inbound`. Они не используются для возвратов — оставлены для исторической совместимости. Новый код в эти поля не пишет.
 
 ### Client constants
 - `Client::CLIENT_ERENRETAIL = 103` — historical name; under id=103 the DB now has `AlixAvien`.

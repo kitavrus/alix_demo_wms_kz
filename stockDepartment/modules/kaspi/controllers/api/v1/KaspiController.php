@@ -374,8 +374,11 @@ class KaspiController extends Controller
      *   "note":        "..."
      * }
      *
-     * Создаётся EcommerceInbound (return) с source_kaspi_order_id / source_kaspi_refund_code.
-     * Физическая приёмка идёт через существующий inbound-флоу.
+     * Создаётся EcommerceReturn + EcommerceReturnItem с source_kaspi_order_id /
+     * source_kaspi_refund_code. Физическая приёмка возврата — через UI
+     * /alix/ecommerce/returns/scanning/index (тоже EcommerceReturn).
+     *
+     * Требование: Kaspi-заказ должен быть в статусе KASPI_DELIVERY_RETURN_REQUESTED.
      */
     public function actionPartialReturn($orderId)
     {

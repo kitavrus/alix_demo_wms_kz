@@ -36,6 +36,23 @@ class KaspiOrderHydrator
         $attributes = isset($orderData['attributes']) ? $orderData['attributes'] : [];
         $customerData = isset($attributes['customer']) ? $attributes['customer'] : [];
 
+        // Реальный Kaspi кладёт waybill/waybillNumber/courierTransmission*/express/
+        // returnedToWarehouse внутрь attributes.kaspiDelivery (см. q3210). Наш
+        // KaspiJsonApiSerializer для совместимости пишет их же на верхний уровень
+        // attributes — поэтому читаем сначала из kaspiDelivery, потом fallback.
+        $kaspiDelivery = isset($attributes['kaspiDelivery']) && is_array($attributes['kaspiDelivery'])
+            ? $attributes['kaspiDelivery']
+            : [];
+        $pick = function ($key) use ($kaspiDelivery, $attributes) {
+            if (array_key_exists($key, $kaspiDelivery)) {
+                return $kaspiDelivery[$key];
+            }
+            if (array_key_exists($key, $attributes)) {
+                return $attributes[$key];
+            }
+            return null;
+        };
+
         $customer = new CustomerDto(
             isset($customerData['firstName']) ? $customerData['firstName'] : '',
             isset($customerData['lastName']) ? $customerData['lastName'] : '',
@@ -62,14 +79,14 @@ class KaspiOrderHydrator
             isset($attributes['preOrder']) ? $attributes['preOrder'] : null,
             isset($attributes['plannedDeliveryDate']) ? $attributes['plannedDeliveryDate'] : null,
             isset($attributes['reservationDate']) ? $attributes['reservationDate'] : null,
-            isset($attributes['waybill']) ? $attributes['waybill'] : null,
-            isset($attributes['courierTransmissionPlanningDate']) ? $attributes['courierTransmissionPlanningDate'] : null,
-            isset($attributes['courierTransmissionDate']) ? $attributes['courierTransmissionDate'] : null,
+            $pick('waybill'),
+            $pick('courierTransmissionPlanningDate'),
+            $pick('courierTransmissionDate'),
             isset($attributes['deliveryAddress']) ? $attributes['deliveryAddress'] : null,
-            isset($attributes['waybillNumber']) ? $attributes['waybillNumber'] : null,
+            $pick('waybillNumber'),
             isset($attributes['deliveryCostForSeller']) ? $attributes['deliveryCostForSeller'] : null,
-            isset($attributes['express']) ? $attributes['express'] : null,
-            isset($attributes['returnedToWarehouse']) ? $attributes['returnedToWarehouse'] : null,
+            $pick('express'),
+            $pick('returnedToWarehouse'),
             isset($attributes['entries']) ? $attributes['entries'] : null,
             isset($attributes['user']) ? $attributes['user'] : null
         );

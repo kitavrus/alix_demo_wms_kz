@@ -8,6 +8,8 @@ use common\ecommerce\entities\EcommerceOutboundItem;
 use common\ecommerce\entities\EcommerceReturn;
 use common\ecommerce\entities\EcommerceReturnItem;
 use common\ecommerce\entities\EcommerceStock;
+use common\modules\stock\models\Stock;
+use stockDepartment\modules\kaspi\dto\PartialReturnRequestDto;
 use stockDepartment\modules\kaspi\enums\OrderStatus;
 use Yii;
 use yii\base\Component;
@@ -52,6 +54,11 @@ class OrderReturnService extends Component
     /**
      * Снять резерв до доставки: cancelOrder в Kaspi + вернуть строки стока в YES.
      * Используется, если отмена происходит до отгрузки (не через возвратный flow).
+     *
+     * Освобождаются ТОЛЬКО строки до фазы упаковки (PART_RESERVED/FULL_RESERVED).
+     * Уже отсканированные/упакованные (status=OUTBOUND_SCANNED, box_barcode заполнен)
+     * не трогаем — иначе физически в коробке товар, а в БД он «свободен» = дабл-аллокация.
+     * Для таких случаев нужен return-flow (`/alix/ecommerce/returns/scanning/*`).
      */
     public function returnToStock($kaspiOrderId, $reason = null)
     {
@@ -64,6 +71,32 @@ class OrderReturnService extends Component
             return [
                 'status'  => 'not_found',
                 'message' => 'Outbound order with external_order_number=' . $kaspiOrderId . ' not found',
+            ];
+        }
+
+        // Если хотя бы одна строка уже упакована/отгружена — отказываемся,
+        // чтобы caller осознанно пошёл в return-flow вместо «тихого» сброса.
+        $packedCount = (int) EcommerceStock::find()
+            ->andWhere(['outbound_id' => (int) $outbound->id])
+            ->andWhere(['deleted' => 0])
+            ->andWhere(['or',
+                ['status' => Stock::STATUS_OUTBOUND_SCANNED],
+                ['and', ['not', ['box_barcode' => null]], ['!=', 'box_barcode', '']],
+            ])
+            ->count();
+
+        if ($packedCount > 0) {
+            return [
+                'status'  => 'already_packed',
+                'message' => sprintf(
+                    'У отгрузки %d есть %d упакованных/отгруженных строк стока — '
+                    . 'используйте возвратный флоу (/alix/ecommerce/returns/scanning/index) '
+                    . 'или физически распакуйте товар перед повторной попыткой.',
+                    (int) $outbound->id,
+                    $packedCount
+                ),
+                'outbound_id'  => (int) $outbound->id,
+                'packed_rows'  => $packedCount,
             ];
         }
 
@@ -82,6 +115,10 @@ class OrderReturnService extends Component
                 'and',
                 ['outbound_id' => (int) $outbound->id],
                 ['status_availability' => EcommerceStock::STATUS_AVAILABILITY_RESERVED],
+                ['status' => [
+                    Stock::STATUS_OUTBOUND_PART_RESERVED,
+                    Stock::STATUS_OUTBOUND_FULL_RESERVED,
+                ]],
                 ['deleted' => 0],
             ]
         );
@@ -103,12 +140,19 @@ class OrderReturnService extends Component
     {
         $params = [
             'filter[orders][status]' => OrderStatus::ORDER_KASPI_DELIVERY_RETURN_REQUESTED,
+            // creationDate Kaspi требует обязательно (иначе HTTP 400).
+            // Window остаётся дефолтный 13 дней (см. KaspiAPIService::getOrdersPage):
+            // покрывает большинство возвратов, т.к. срок Kaspi-возврата ≤14 дней с доставки.
+            // Защита от фантомов — order->status check ниже в loop'е.
         ];
 
         try {
             $page = $this->api->getOrdersPage($params);
         } catch (\Exception $e) {
-            Yii::error('Kaspi return polling failed: ' . $e->getMessage(), 'kaspi.return');
+            Yii::error(
+                'Kaspi poll возвратов: запрос к Kaspi упал: ' . $e->getMessage(),
+                'kaspi.return'
+            );
             return [
                 'status'  => 'error',
                 'message' => $e->getMessage(),
@@ -133,10 +177,29 @@ class OrderReturnService extends Component
                 continue;
             }
 
+            // Защита: Kaspi может вернуть в выдаче заказы с другими статусами
+            // (видели CANCELLED/ARCHIVE и ACCEPTED_BY_MERCHANT при фильтре
+            // KASPI_DELIVERY_RETURN_REQUESTED). Создавать EcommerceReturn по таким —
+            // фантомные записи. Фильтруем явно по статусу заказа.
+            $orderStatus = is_object($order) && property_exists($order, 'status')
+                ? (string) $order->status
+                : '';
+            if ($orderStatus !== OrderStatus::ORDER_KASPI_DELIVERY_RETURN_REQUESTED) {
+                Yii::warning(
+                    'Kaspi poll возвратов: у заказа ' . $kaspiOrderId . ' status='
+                    . ($orderStatus !== '' ? $orderStatus : '<пусто>')
+                    . ' (ожидался KASPI_DELIVERY_RETURN_REQUESTED) — пропущен',
+                    'kaspi.return'
+                );
+                $skipped++;
+                continue;
+            }
+
             $returnRequest = $this->readReturnRequestFromKaspi($kaspiOrderId);
             if (empty($returnRequest['items'])) {
                 Yii::warning(
-                    'Kaspi return poll: order ' . $kaspiOrderId . ' has no returnable entries — skipped',
+                    'Kaspi poll возвратов: у заказа ' . $kaspiOrderId
+                    . ' нет позиций к возврату — пропущен',
                     'kaspi.return'
                 );
                 $skipped++;
@@ -154,7 +217,8 @@ class OrderReturnService extends Component
                 ->one();
             if ($outbound === null) {
                 Yii::warning(
-                    'Kaspi return poll: outbound not found for order ' . $kaspiOrderId . ' — skipped',
+                    'Kaspi poll возвратов: для заказа ' . $kaspiOrderId
+                    . ' не найдена отгрузка (ecommerce_outbound.external_order_number) — пропущен',
                     'kaspi.return'
                 );
                 $skipped++;
@@ -173,7 +237,8 @@ class OrderReturnService extends Component
             } else {
                 $errors++;
                 Yii::error(
-                    'Kaspi return poll: failed to create return for ' . $kaspiOrderId . ': ' . json_encode($result),
+                    'Kaspi poll возвратов: не удалось создать EcommerceReturn для '
+                    . $kaspiOrderId . ': ' . json_encode($result, JSON_UNESCAPED_UNICODE),
                     'kaspi.return'
                 );
             }
@@ -207,6 +272,21 @@ class OrderReturnService extends Component
             return ['status' => 'error', 'message' => 'Empty kaspi order id'];
         }
 
+        // Запрещаем заводить возврат по заказу, который Kaspi не пометил как RETURN_REQUESTED.
+        // Иначе оператор может случайно создать «фантомный» возврат для CANCELLED / ACCEPTED_BY_MERCHANT.
+        $kaspiOrder = $this->api->getOrderById($kaspiOrderId);
+        if ($kaspiOrder === null) {
+            return ['status' => 'not_found', 'message' => 'Kaspi order ' . $kaspiOrderId . ' не найден'];
+        }
+        $kaspiStatus = (string) $kaspiOrder->status;
+        if ($kaspiStatus !== OrderStatus::ORDER_KASPI_DELIVERY_RETURN_REQUESTED) {
+            return [
+                'status'  => 'wrong_status',
+                'message' => 'Kaspi order ' . $kaspiOrderId . ' имеет status=' . $kaspiStatus
+                    . '. Возврат можно создать только в статусе KASPI_DELIVERY_RETURN_REQUESTED.',
+            ];
+        }
+
         $returnRequest = $this->readReturnRequestFromKaspi($kaspiOrderId);
         if (empty($returnRequest['items'])) {
             return ['status' => 'no_items', 'message' => 'Kaspi вернул пустой список позиций возврата'];
@@ -238,6 +318,89 @@ class OrderReturnService extends Component
         }
 
         return $this->createEcomReturnFromOutbound($outbound, $kaspiOrderId, $returnRequest);
+    }
+
+    /**
+     * Создать частичный возврат по orderId + явный список позиций (`{product_guid, qty}`)
+     * из тела HTTP-запроса. Используется endpoint'ом `POST /kaspi/api/v1/orders/<id>/partial-return`.
+     *
+     * Отличие от `createEcomReturnByKaspiOrderId`: позиции и refund_code приходят
+     * от клиента, а не из `getOrderEntries`. Status-guard и идемпотентность те же.
+     *
+     * @param string                    $kaspiOrderId
+     * @param PartialReturnRequestDto   $dto
+     * @return array ['status' => 'OK'|'exists'|'not_found'|'wrong_status'|'no_items'|'error', ...]
+     */
+    public function createPartialReturn($kaspiOrderId, PartialReturnRequestDto $dto)
+    {
+        $kaspiOrderId = trim((string) $kaspiOrderId);
+        if ($kaspiOrderId === '') {
+            return ['status' => 'error', 'message' => 'Empty kaspi order id'];
+        }
+
+        $kaspiOrder = $this->api->getOrderById($kaspiOrderId);
+        if ($kaspiOrder === null) {
+            return ['status' => 'not_found', 'message' => 'Kaspi order ' . $kaspiOrderId . ' не найден'];
+        }
+        $kaspiStatus = (string) $kaspiOrder->status;
+        if ($kaspiStatus !== OrderStatus::ORDER_KASPI_DELIVERY_RETURN_REQUESTED) {
+            return [
+                'status'  => 'wrong_status',
+                'message' => 'Kaspi order ' . $kaspiOrderId . ' имеет status=' . $kaspiStatus
+                    . '. Возврат можно создать только в статусе KASPI_DELIVERY_RETURN_REQUESTED.',
+            ];
+        }
+
+        // Конвертируем DTO-позиции в формат createEcomReturnFromOutbound.
+        // В DTO product_guid должен быть уже product_v2.guid; resolveKaspiSkuToGuid
+        // ниже примет и guid, и article — как и в poll-флоу.
+        $items = [];
+        foreach ((array) $dto->items as $row) {
+            $guid = isset($row['product_guid']) ? (string) $row['product_guid'] : '';
+            $qty  = isset($row['qty']) ? (int) $row['qty'] : 0;
+            if ($guid === '' || $qty <= 0) {
+                continue;
+            }
+            $items[] = ['sku' => $guid, 'qty' => $qty];
+        }
+        if (empty($items)) {
+            return ['status' => 'no_items', 'message' => 'Список items пуст после нормализации'];
+        }
+
+        $refundCode = ($dto->refund_code !== null && $dto->refund_code !== '')
+            ? (string) $dto->refund_code
+            : 'RF-' . substr($kaspiOrderId, 0, 16);
+
+        if ($this->returnExists($kaspiOrderId, $refundCode)) {
+            $existing = EcommerceReturn::find()
+                ->andWhere([
+                    'source_kaspi_order_id'    => $kaspiOrderId,
+                    'source_kaspi_refund_code' => $refundCode,
+                ])
+                ->andWhere(['deleted' => 0])
+                ->one();
+            return [
+                'status'    => 'exists',
+                'return_id' => $existing ? (int) $existing->id : 0,
+            ];
+        }
+
+        $outbound = EcommerceOutbound::find()
+            ->andWhere(['external_order_number' => $kaspiOrderId])
+            ->andWhere(['deleted' => 0])
+            ->one();
+        if ($outbound === null) {
+            return [
+                'status'  => 'not_found',
+                'message' => 'Outbound with external_order_number=' . $kaspiOrderId . ' not found',
+            ];
+        }
+
+        return $this->createEcomReturnFromOutbound(
+            $outbound,
+            $kaspiOrderId,
+            ['refund_code' => $refundCode, 'items' => $items]
+        );
     }
 
     /**
@@ -292,7 +455,7 @@ class OrderReturnService extends Component
                 $guid = $this->resolveKaspiSkuToGuid($sku);
                 if ($guid === '') {
                     Yii::warning(
-                        "Kaspi return poll: sku '{$sku}' не резолвится в product_v2.guid — позиция пропущена",
+                        "Kaspi poll возвратов: sku '{$sku}' не резолвится в product_v2.guid — позиция пропущена",
                         'kaspi.return'
                     );
                     continue;
@@ -305,7 +468,7 @@ class OrderReturnService extends Component
                     ->one();
                 if ($oItem === null) {
                     Yii::warning(
-                        "Kaspi return poll: в outbound {$outbound->id} нет позиции с product_sku={$guid} — пропущена",
+                        "Kaspi poll возвратов: в отгрузке {$outbound->id} нет позиции с product_sku={$guid} — пропущена",
                         'kaspi.return'
                     );
                     continue;
@@ -339,8 +502,8 @@ class OrderReturnService extends Component
 
                 if (count($stockIds) < $qty) {
                     Yii::warning(
-                        "Kaspi return poll: по sku={$sku} найдено только "
-                        . count($stockIds) . " свободных сток-строк из {$qty} требуемых",
+                        "Kaspi poll возвратов: по sku={$sku} найдено только "
+                        . count($stockIds) . " свободных строк стока из {$qty} требуемых",
                         'kaspi.return'
                     );
                 }
@@ -367,7 +530,10 @@ class OrderReturnService extends Component
             ];
         } catch (\Exception $e) {
             $transaction->rollBack();
-            Yii::error('Kaspi return create failed: ' . $e->getMessage(), 'kaspi.return');
+            Yii::error(
+                'Kaspi: не удалось создать EcommerceReturn: ' . $e->getMessage(),
+                'kaspi.return'
+            );
             return [
                 'status'  => 'error',
                 'message' => $e->getMessage(),
@@ -390,7 +556,7 @@ class OrderReturnService extends Component
         $response = $this->api->changeOrderStatus($kaspiOrderId, OrderStatus::ORDER_RETURNED);
 
         Yii::info(
-            'Kaspi RETURNED response for order ' . $kaspiOrderId . ': '
+            'Kaspi: ответ на перевод заказа ' . $kaspiOrderId . ' в RETURNED: '
             . json_encode($response, JSON_UNESCAPED_UNICODE),
             'kaspi.return.response'
         );
@@ -419,7 +585,10 @@ class OrderReturnService extends Component
         try {
             $response = $this->api->getOrderEntries($kaspiOrderId);
         } catch (\Exception $e) {
-            Yii::error('Kaspi getOrderEntries failed for ' . $kaspiOrderId . ': ' . $e->getMessage(), 'kaspi.return');
+            Yii::error(
+                'Kaspi: getOrderEntries для ' . $kaspiOrderId . ' упал: ' . $e->getMessage(),
+                'kaspi.return'
+            );
             return ['refund_code' => '', 'items' => []];
         }
 

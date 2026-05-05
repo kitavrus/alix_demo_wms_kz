@@ -131,6 +131,7 @@ class Alix1CApiService extends Component
      */
     public function postSale(array $payload)
     {
+        // TODO: - Вот тут добавить настоящий endpoint
         Yii::info(
             'Alix 1C postSale (stub): ' . json_encode($payload, JSON_UNESCAPED_UNICODE),
             KaspiConstants::LOG_CATEGORY_ALIX_1C

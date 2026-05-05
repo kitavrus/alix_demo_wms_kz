@@ -8,7 +8,7 @@
 namespace stockDepartment\modules\alix\controllers\ecommerce\barcode\domain\service;
 
 
-use stockDepartment\modules\alix\controllers\inbound\returns\domain\entities\EcommerceInboundPlaceBarcode;
+use common\ecommerce\entities\EcommerceInboundPlaceBarcode;
 use stockDepartment\modules\alix\controllers\ecommerce\outbound\domain\entities\EcommerceOutboundPackageBarcode;
 use stockDepartment\modules\alix\controllers\ecommerce\stock\domain\entities\EcommerceStock;
 use stockDepartment\modules\alix\controllers\ecommerce\stock\domain\constants\StockAvailability;

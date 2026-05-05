@@ -4,6 +4,7 @@ namespace stockDepartment\modules\kaspi\services;
 
 use common\ecommerce\entities\EcommerceOutbound;
 use common\ecommerce\entities\EcommerceStock;
+use common\modules\stock\models\Stock;
 use stockDepartment\modules\kaspi\enums\OrderStatus;
 use Yii;
 use yii\base\Component;
@@ -88,7 +89,10 @@ class OrderStatusSyncService extends Component
             try {
                 $order = $this->api->getOrderById($kaspiOrderId);
             } catch (\Exception $e) {
-                Yii::error('Kaspi getOrderById failed for ' . $kaspiOrderId . ': ' . $e->getMessage(), 'kaspi.orders');
+                Yii::error(
+                    'Kaspi: getOrderById для ' . $kaspiOrderId . ' упал: ' . $e->getMessage(),
+                    'kaspi.orders'
+                );
                 $errors++;
                 continue;
             }
@@ -137,12 +141,21 @@ class OrderStatusSyncService extends Component
     }
 
     /**
-     * Снять резерв стока и пометить заказ отменённым.
-     * Делегирует returnService, но не вызывает cancelOrder ещё раз — Kaspi уже сам в CANCELLING/CANCELLED.
+     * Реакция на CANCELLING/CANCELLED от Kaspi.
+     *
+     * Сток освобождается ТОЛЬКО до фазы упаковки — строки в
+     * STATUS_OUTBOUND_PART_RESERVED/FULL_RESERVED. Уже отсканированный/упакованный
+     * сток (status=OUTBOUND_SCANNED, box_barcode заполнен) не трогаем — он либо
+     * физически в коробке на складе, либо у курьера, либо у клиента, и
+     * автоматический сброс status_availability=YES даст дабл-аллокацию (товар
+     * «свободен» в БД, но физически не на полке).
+     *
+     * Для упакованных/отгруженных заказов фиксируем warning — оператор должен
+     * разобрать руками (распаковать на складе или провести через return-flow).
      */
     private function handleCancelled(EcommerceOutbound $outbound, $kaspiOrderId)
     {
-        EcommerceStock::updateAll(
+        $released = (int) EcommerceStock::updateAll(
             [
                 'status_availability' => EcommerceStock::STATUS_AVAILABILITY_YES,
                 'outbound_id'         => 0,
@@ -152,15 +165,52 @@ class OrderStatusSyncService extends Component
                 'and',
                 ['outbound_id' => (int) $outbound->id],
                 ['status_availability' => EcommerceStock::STATUS_AVAILABILITY_RESERVED],
+                ['status' => [
+                    Stock::STATUS_OUTBOUND_PART_RESERVED,
+                    Stock::STATUS_OUTBOUND_FULL_RESERVED,
+                ]],
                 ['deleted' => 0],
             ]
         );
 
-        Yii::info(
-            'Kaspi order ' . $kaspiOrderId . ' cancelled on Kaspi side — stock released for outbound '
-            . (int) $outbound->id,
-            'kaspi.orders'
-        );
+        // Считаем, сколько строк осталось «зависшими» в фазе упаковки/отгрузки —
+        // их надо разобрать оператору, чтобы не образовалась дабл-аллокация и
+        // чтобы physical-inventory не разъезжался с учётом.
+        $stuck = (int) EcommerceStock::find()
+            ->andWhere(['outbound_id' => (int) $outbound->id])
+            ->andWhere(['deleted' => 0])
+            ->andWhere(['or',
+                ['status' => Stock::STATUS_OUTBOUND_SCANNED],
+                ['and', ['not', ['box_barcode' => null]], ['!=', 'box_barcode', '']],
+            ])
+            ->count();
+
+        if ($stuck > 0) {
+            $alreadyShipped = !empty($outbound->date_left_warehouse);
+            Yii::warning(
+                sprintf(
+                    'Kaspi-заказ %s отменён, но у отгрузки %d есть %d упакованных/'
+                    . 'отгруженных строк стока (%s). Освобождено %d строк до упаковки; '
+                    . 'остальное требует действий оператора (распаковать на складе '
+                    . 'или провести возврат через /alix/ecommerce/returns/scanning).',
+                    $kaspiOrderId,
+                    (int) $outbound->id,
+                    $stuck,
+                    $alreadyShipped
+                        ? 'отгружено — date_left_warehouse заполнен'
+                        : 'упаковано, но не отгружено',
+                    $released
+                ),
+                'kaspi.orders'
+            );
+        } else {
+            Yii::info(
+                'Kaspi-заказ ' . $kaspiOrderId . ' отменён на стороне Kaspi — '
+                . 'освобождено ' . $released . ' строк стока до упаковки для отгрузки '
+                . (int) $outbound->id,
+                'kaspi.orders'
+            );
+        }
     }
 
     /**
