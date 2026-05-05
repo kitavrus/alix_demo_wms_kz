@@ -12,15 +12,191 @@ class KaspiMockFactory
     private static $defaultCustomerId = 'NzAyNjM4NTcwNQ';
     // Артикул реального товара для поллинга через cron/kaspi-poll-orders —
     // должен существовать в product_v2 / ecommerce_stock, иначе импорт упадёт на резерве.
-    private static $defaultProductCode = '1100015431';
-    private static $defaultProductName = 'SOS-крем';
-    private static $defaultProductPrice = 4990;
+    private static $defaultProductCode = '1100012686';
+    private static $defaultProductName = 'РАСЦЕПЛЯЕМАЯ ПУДРА 01 ПРОЗРАЧНАЯ';
+    private static $defaultProductPrice = 99999;
     /** @var int Количество в outbound-позиции (сколько купили). Меняется в тестах. */
-    public static $defaultOrderQuantity = 3;
+    public static $defaultOrderQuantity = 5;
     /** @var int|null Сколько клиент возвращает из купленного. null = полный возврат (= $defaultOrderQuantity). */
-    public static $defaultReturnedQuantity = 1;
+    public static $defaultReturnedQuantity = null;
     /** @var string Refund code для синтезированного mock-ответа (уникален per test). */
     public static $defaultRefundCode = 'RF-PARTIAL-002';
+
+    /**
+     * Тестовый флаг: имитирует эмпирически наблюдаемый «баг» Kaspi, когда фильтр
+     * filter[orders][status]=KASPI_DELIVERY_RETURN_REQUESTED игнорируется и в
+     * выдаче приходят заказы с другими статусами. Полезно для проверки
+     * defensive status-guard в OrderReturnService::pollKaspiReturnsAndCreateEcomReturns.
+     *
+     * При false (по умолчанию) мок честно фильтрует по статусу.
+     *
+     * @var bool
+     */
+    public static $simulateBuggyReturnFilter = false;
+
+    /**
+     * Реестр фикстур заказов для мока. Заполняется на основе реальных JSON-ответов
+     * Kaspi (Жанна — CANCELLED/ARCHIVE; Нурбек — ACCEPTED_BY_MERCHANT/KASPI_DELIVERY/
+     * assembled c waybill) + один синтетический в KASPI_DELIVERY_RETURN_REQUESTED
+     * для happy-path тестирования cron/kaspi-poll-returns.
+     *
+     * Чтобы проверить локально:
+     *   1) Включить useMock в KaspiAPIService (kaspi.php config).
+     *   2) Запустить `php yii cron/kaspi-sync-order-statuses` — увидите реакцию
+     *      handleCancelled на CANCELLED-заказ Жанны.
+     *   3) Запустить `php yii cron/kaspi-poll-returns` — синтетическая фикстура
+     *      OTEyMjgyNjJa подхватится, на её базе создастся EcommerceReturn.
+     *   4) Чтобы проверить defensive status-guard в poll'е возвратов:
+     *      KaspiMockFactory::$simulateBuggyReturnFilter = true; — тогда фильтр
+     *      RETURN_REQUESTED отдаст ВСЕ фикстуры, и guard их отбросит по статусу.
+     *
+     * @return array<string, array> orderId => order resource
+     */
+    private static function orderFixtures()
+    {
+        $nowMs = (int) floor(microtime(true) * 1000);
+
+        return [
+            // ───────── Жанна, CANCELLED, ARCHIVE (real fixture from operator) ─────────
+            'OTA2NTAwNDc0' => self::buildOrderResource('OTA2NTAwNDc0', [
+                'code' => '906500474',
+                'status' => 'CANCELLED',
+                'state' => 'ARCHIVE',
+                'totalPrice' => 106,
+                'deliveryCostForSeller' => 0,
+                'deliveryCost' => 0,
+                'deliveryMode' => 'DELIVERY_REGIONAL_TODOOR',
+                'creationDate' => $nowMs - 4 * 86400 * 1000, // 4 дня назад
+                'approvedByBankDate' => $nowMs - 4 * 86400 * 1000,
+                'plannedDeliveryDate' => null,
+                'assembled' => false,
+                'customer' => [
+                    'id' => 'Nzc4MTQxMjEzOQ',
+                    'firstName' => 'Жанна',
+                    'lastName' => 'Б',
+                    'name' => 'Жанна',
+                    'cellPhone' => '7781412139',
+                ],
+                'deliveryAddress' => [
+                    'streetName' => 'улица Толе-би',
+                    'streetNumber' => '255',
+                    'town' => 'Толе би (Жамбыл. обл)',
+                    'district' => null,
+                    'building' => null,
+                    'apartment' => '',
+                    'formattedAddress' => 'Толе би (Жамбыл. обл), улица Толе-би, 255, ',
+                    'latitude' => 43.691431,
+                    'longitude' => 73.759267,
+                ],
+                'kaspiDelivery' => [
+                    'waybill' => null,
+                    'waybillNumber' => null,
+                    'courierTransmissionDate' => null,
+                    'courierTransmissionPlanningDate' => $nowMs - 4 * 86400 * 1000 + 3600 * 1000,
+                    'express' => false,
+                    'returnedToWarehouse' => false,
+                    'firstMileCourier' => null,
+                ],
+            ]),
+
+            // ───────── Нурбек, ACCEPTED_BY_MERCHANT, KASPI_DELIVERY, assembled (real fixture) ─────────
+            'OTEyMjgyNjI5' => self::buildOrderResource('OTEyMjgyNjI5', [
+                'code' => '912282629',
+                'status' => 'ACCEPTED_BY_MERCHANT',
+                'state' => 'KASPI_DELIVERY',
+                'totalPrice' => 1690,
+                'deliveryCostForSeller' => 173,
+                'deliveryCost' => 500,
+                'deliveryMode' => 'DELIVERY_PICKUP',
+                'creationDate' => $nowMs - 1 * 86400 * 1000, // вчера
+                'approvedByBankDate' => $nowMs - 1 * 86400 * 1000,
+                'plannedDeliveryDate' => $nowMs + 2 * 86400 * 1000,
+                'assembled' => true, // already assembled = waybill готов
+                'customer' => [
+                    'id' => 'NzAyNjM4NTcwNQ',
+                    'firstName' => 'Нурбек',
+                    'lastName' => 'О',
+                    'name' => 'Нурбек',
+                    'cellPhone' => '7026385705',
+                ],
+                'deliveryAddress' => [
+                    'streetName' => null,
+                    'streetNumber' => null,
+                    'town' => 'Шымкент',
+                    'district' => null,
+                    'building' => null,
+                    'apartment' => null,
+                    'formattedAddress' => 'Шымкент, ',
+                    'latitude' => null,
+                    'longitude' => null,
+                ],
+                'kaspiDelivery' => [
+                    'waybill' => 'https://kaspi.kz/shop/api/waybill/MOCK-NUR-OTEyMjgyNjI5',
+                    'waybillNumber' => '405934783',
+                    'courierTransmissionDate' => null,
+                    'courierTransmissionPlanningDate' => $nowMs + 1 * 86400 * 1000,
+                    'express' => false,
+                    'returnedToWarehouse' => false,
+                    'firstMileCourier' => null,
+                ],
+            ]),
+
+            // ───────── Синтетика: KASPI_DELIVERY_RETURN_REQUESTED (для poll-returns happy path) ─────────
+            'OTEyMjgyNjJa' => self::buildOrderResource('OTEyMjgyNjJa', [
+                'code' => '912282630',
+                'status' => 'KASPI_DELIVERY_RETURN_REQUESTED',
+                'state' => 'KASPI_DELIVERY',
+                'totalPrice' => self::$defaultProductPrice,
+                'deliveryCostForSeller' => 0,
+                'deliveryCost' => 500,
+                'deliveryMode' => 'DELIVERY_PICKUP',
+                'creationDate' => $nowMs - 5 * 86400 * 1000,
+                'approvedByBankDate' => $nowMs - 5 * 86400 * 1000,
+                'plannedDeliveryDate' => $nowMs - 2 * 86400 * 1000,
+                'assembled' => true,
+                'customer' => [
+                    'id' => self::$defaultCustomerId,
+                    'firstName' => 'Тест',
+                    'lastName' => 'Возврат',
+                    'name' => 'Тест Возврат',
+                    'cellPhone' => '7777777777',
+                ],
+                'deliveryAddress' => [
+                    'streetName' => null,
+                    'streetNumber' => null,
+                    'town' => 'Алматы',
+                    'district' => null,
+                    'building' => null,
+                    'apartment' => null,
+                    'formattedAddress' => 'Алматы, ',
+                    'latitude' => null,
+                    'longitude' => null,
+                ],
+                'kaspiDelivery' => [
+                    'waybill' => 'https://kaspi.kz/shop/api/waybill/MOCK-RET-OTEyMjgyNjJa',
+                    'waybillNumber' => '405934999',
+                    'courierTransmissionDate' => $nowMs - 3 * 86400 * 1000,
+                    'courierTransmissionPlanningDate' => $nowMs - 4 * 86400 * 1000,
+                    'express' => false,
+                    'returnedToWarehouse' => false,
+                    'firstMileCourier' => null,
+                ],
+            ]),
+        ];
+    }
+
+    /**
+     * Сборка единичной фикстуры заказа на основе attributes-overrides поверх дефолта.
+     * Все поля совпадают по форме с реальным Kaspi /v2/orders/{id} ответом.
+     */
+    private static function buildOrderResource($id, array $attrsOverride)
+    {
+        $base = self::getSampleOrderResource($id);
+        foreach ($attrsOverride as $k => $v) {
+            $base['attributes'][$k] = $v;
+        }
+        return $base;
+    }
 
     private static function getSampleOrderResource($orderId = null)
     {
@@ -44,8 +220,8 @@ class KaspiMockFactory
                 'signatureRequired' => false,
                 // Ключевая пара для poll'а: pollAndImportNew() фильтрует
                 // APPROVED_BY_BANK + state=NEW (см. OrderImportService:71-72).
-                'status' => 'APPROVED_BY_BANK',
-                'state' => 'NEW',
+                'status' => 'ACCEPTED_BY_MERCHANT', //'APPROVED_BY_BANK',
+                'state' => 'KASPI_DELIVERY', //'NEW',
                 'pickupPointId' => '30453464_PP1',
                 'deliveryCost' => 500,
                 'customer' => [
@@ -132,37 +308,50 @@ class KaspiMockFactory
 
     public static function getOrdersApiResponse()
     {
-        $orderId = self::$defaultOrderId;
+        $fixtures = array_values(self::orderFixtures());
 
         return [
-            'data' => [
-                self::getSampleOrderResource($orderId),
-            ],
+            'data' => $fixtures,
             'included' => [],
             'meta' => [
                 'pageCount' => 1,
-                'totalCount' => 1,
+                'totalCount' => count($fixtures),
             ],
         ];
     }
 
     /**
-     * Вариант mock-ответа под фильтр filter[orders][status]. Тот же sample-order,
-     * но с подменённым status (для простого e2e теста возвратного флоу через
-     * cron/kaspi-poll-returns).
+     * Вариант mock-ответа под фильтр filter[orders][status]. Честно фильтрует
+     * фикстуры по `attributes.status`.
+     *
+     * Если включён `$simulateBuggyReturnFilter` И фильтр запрашивает
+     * KASPI_DELIVERY_RETURN_REQUESTED — отдаём ВСЕ фикстуры (мимикрия эмпирически
+     * наблюдаемого поведения Kaspi, когда фильтр игнорируется). Это позволяет
+     * проверить, что defensive status-guard в OrderReturnService отсеивает
+     * заказы с неподходящим статусом.
      */
     public static function getOrdersApiResponseByStatus($status)
     {
-        $orderId = self::$defaultOrderId;
-        $order = self::getSampleOrderResource($orderId);
-        $order['attributes']['status'] = $status;
+        $fixtures = self::orderFixtures();
+
+        if (self::$simulateBuggyReturnFilter && $status === 'KASPI_DELIVERY_RETURN_REQUESTED') {
+            $matching = array_values($fixtures);
+        } else {
+            $matching = [];
+            foreach ($fixtures as $order) {
+                $orderStatus = isset($order['attributes']['status']) ? (string) $order['attributes']['status'] : '';
+                if ($orderStatus === $status) {
+                    $matching[] = $order;
+                }
+            }
+        }
 
         return [
-            'data' => [$order],
+            'data' => $matching,
             'included' => [],
             'meta' => [
                 'pageCount' => 1,
-                'totalCount' => 1,
+                'totalCount' => count($matching),
             ],
         ];
     }
@@ -180,27 +369,34 @@ class KaspiMockFactory
 
     public static function getOrderById($orderId)
     {
-        $full = self::getOrdersApiResponse();
-        $included = isset($full['included']) ? $full['included'] : [];
-        foreach ($full['data'] as $row) {
-            if (isset($row['id']) && $row['id'] === $orderId) {
-                return KaspiOrderHydrator::hydrateSingleOrder($row, $included);
-            }
+        $fixtures = self::orderFixtures();
+        if (isset($fixtures[$orderId])) {
+            return KaspiOrderHydrator::hydrateSingleOrder($fixtures[$orderId], []);
         }
-
-        return null;
+        // Fallback: синтезируем дефолтный для неизвестных id (чтобы not-fixture тесты не ломались).
+        return KaspiOrderHydrator::hydrateSingleOrder(self::getSampleOrderResource($orderId), []);
     }
 
     public static function getOrderApiResponse($orderId)
     {
+        $fixtures = self::orderFixtures();
+        if (isset($fixtures[$orderId])) {
+            return ['data' => $fixtures[$orderId]];
+        }
         $order = self::getSampleOrderResource($orderId);
         $order['attributes']['code'] = 'KZ-' . $orderId;
-
         return ['data' => $order];
     }
 
     public static function getOrderByIdRawApiResponse($orderId)
     {
+        $fixtures = self::orderFixtures();
+        if (isset($fixtures[$orderId])) {
+            return [
+                'data' => $fixtures[$orderId],
+                'included' => [],
+            ];
+        }
         $base = self::getOrderApiResponse($orderId);
         $base['included'] = [
             [
