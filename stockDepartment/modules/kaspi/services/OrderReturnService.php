@@ -149,7 +149,10 @@ class OrderReturnService extends Component
         try {
             $page = $this->api->getOrdersPage($params);
         } catch (\Exception $e) {
-            Yii::error('Kaspi return polling failed: ' . $e->getMessage(), 'kaspi.return');
+            Yii::error(
+                'Kaspi poll возвратов: запрос к Kaspi упал: ' . $e->getMessage(),
+                'kaspi.return'
+            );
             return [
                 'status'  => 'error',
                 'message' => $e->getMessage(),
@@ -195,7 +198,8 @@ class OrderReturnService extends Component
             $returnRequest = $this->readReturnRequestFromKaspi($kaspiOrderId);
             if (empty($returnRequest['items'])) {
                 Yii::warning(
-                    'Kaspi return poll: order ' . $kaspiOrderId . ' has no returnable entries — skipped',
+                    'Kaspi poll возвратов: у заказа ' . $kaspiOrderId
+                    . ' нет позиций к возврату — пропущен',
                     'kaspi.return'
                 );
                 $skipped++;
@@ -213,7 +217,8 @@ class OrderReturnService extends Component
                 ->one();
             if ($outbound === null) {
                 Yii::warning(
-                    'Kaspi return poll: outbound not found for order ' . $kaspiOrderId . ' — skipped',
+                    'Kaspi poll возвратов: для заказа ' . $kaspiOrderId
+                    . ' не найдена отгрузка (ecommerce_outbound.external_order_number) — пропущен',
                     'kaspi.return'
                 );
                 $skipped++;
@@ -232,7 +237,8 @@ class OrderReturnService extends Component
             } else {
                 $errors++;
                 Yii::error(
-                    'Kaspi return poll: failed to create return for ' . $kaspiOrderId . ': ' . json_encode($result),
+                    'Kaspi poll возвратов: не удалось создать EcommerceReturn для '
+                    . $kaspiOrderId . ': ' . json_encode($result, JSON_UNESCAPED_UNICODE),
                     'kaspi.return'
                 );
             }
@@ -449,7 +455,7 @@ class OrderReturnService extends Component
                 $guid = $this->resolveKaspiSkuToGuid($sku);
                 if ($guid === '') {
                     Yii::warning(
-                        "Kaspi return poll: sku '{$sku}' не резолвится в product_v2.guid — позиция пропущена",
+                        "Kaspi poll возвратов: sku '{$sku}' не резолвится в product_v2.guid — позиция пропущена",
                         'kaspi.return'
                     );
                     continue;
@@ -462,7 +468,7 @@ class OrderReturnService extends Component
                     ->one();
                 if ($oItem === null) {
                     Yii::warning(
-                        "Kaspi return poll: в outbound {$outbound->id} нет позиции с product_sku={$guid} — пропущена",
+                        "Kaspi poll возвратов: в отгрузке {$outbound->id} нет позиции с product_sku={$guid} — пропущена",
                         'kaspi.return'
                     );
                     continue;
@@ -496,8 +502,8 @@ class OrderReturnService extends Component
 
                 if (count($stockIds) < $qty) {
                     Yii::warning(
-                        "Kaspi return poll: по sku={$sku} найдено только "
-                        . count($stockIds) . " свободных сток-строк из {$qty} требуемых",
+                        "Kaspi poll возвратов: по sku={$sku} найдено только "
+                        . count($stockIds) . " свободных строк стока из {$qty} требуемых",
                         'kaspi.return'
                     );
                 }
@@ -524,7 +530,10 @@ class OrderReturnService extends Component
             ];
         } catch (\Exception $e) {
             $transaction->rollBack();
-            Yii::error('Kaspi return create failed: ' . $e->getMessage(), 'kaspi.return');
+            Yii::error(
+                'Kaspi: не удалось создать EcommerceReturn: ' . $e->getMessage(),
+                'kaspi.return'
+            );
             return [
                 'status'  => 'error',
                 'message' => $e->getMessage(),
@@ -547,7 +556,7 @@ class OrderReturnService extends Component
         $response = $this->api->changeOrderStatus($kaspiOrderId, OrderStatus::ORDER_RETURNED);
 
         Yii::info(
-            'Kaspi RETURNED response for order ' . $kaspiOrderId . ': '
+            'Kaspi: ответ на перевод заказа ' . $kaspiOrderId . ' в RETURNED: '
             . json_encode($response, JSON_UNESCAPED_UNICODE),
             'kaspi.return.response'
         );
@@ -576,7 +585,10 @@ class OrderReturnService extends Component
         try {
             $response = $this->api->getOrderEntries($kaspiOrderId);
         } catch (\Exception $e) {
-            Yii::error('Kaspi getOrderEntries failed for ' . $kaspiOrderId . ': ' . $e->getMessage(), 'kaspi.return');
+            Yii::error(
+                'Kaspi: getOrderEntries для ' . $kaspiOrderId . ' упал: ' . $e->getMessage(),
+                'kaspi.return'
+            );
             return ['refund_code' => '', 'items' => []];
         }
 

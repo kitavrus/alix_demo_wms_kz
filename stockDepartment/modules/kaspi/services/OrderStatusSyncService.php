@@ -89,7 +89,10 @@ class OrderStatusSyncService extends Component
             try {
                 $order = $this->api->getOrderById($kaspiOrderId);
             } catch (\Exception $e) {
-                Yii::error('Kaspi getOrderById failed for ' . $kaspiOrderId . ': ' . $e->getMessage(), 'kaspi.orders');
+                Yii::error(
+                    'Kaspi: getOrderById для ' . $kaspiOrderId . ' упал: ' . $e->getMessage(),
+                    'kaspi.orders'
+                );
                 $errors++;
                 continue;
             }

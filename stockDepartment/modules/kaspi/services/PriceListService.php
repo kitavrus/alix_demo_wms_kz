@@ -424,9 +424,19 @@ class PriceListService extends Component
 
         $xml->save($fullPath);
 
-        // Копируем в web/ для публичного доступа (автозагрузка Kaspi)
+        // Копируем в web/ для публичного доступа (автозагрузка Kaspi).
+        // в kaspi_price_history.push_response и в HTTP-ответ.
         $webPath = rtrim(Yii::getAlias(self::PRICE_LIST_WEB_DIR_ALIAS), '/') . '/' . self::PRICE_LIST_XML_FILE;
         @copy($fullPath, $webPath);
+        if (!@copy($fullPath, $webPath)) {
+            $err = error_get_last();
+            throw new \RuntimeException(sprintf(
+                'Kaspi XML copy failed: %s -> %s (%s)',
+                $fullPath,
+                $webPath,
+                isset($err['message']) ? $err['message'] : 'unknown'
+            ));
+        }
 
         return $fullPath;
     }
