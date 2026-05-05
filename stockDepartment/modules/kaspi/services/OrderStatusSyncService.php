@@ -186,21 +186,25 @@ class OrderStatusSyncService extends Component
             $alreadyShipped = !empty($outbound->date_left_warehouse);
             Yii::warning(
                 sprintf(
-                    'Kaspi order %s cancelled, but outbound %d has %d packed/shipped stock rows '
-                    . '(%s). Released %d pre-pack rows; operator action required for the rest '
-                    . '(unpack on warehouse or run return-flow).',
+                    'Kaspi-заказ %s отменён, но у отгрузки %d есть %d упакованных/'
+                    . 'отгруженных строк стока (%s). Освобождено %d строк до упаковки; '
+                    . 'остальное требует действий оператора (распаковать на складе '
+                    . 'или провести возврат через /alix/ecommerce/returns/scanning).',
                     $kaspiOrderId,
                     (int) $outbound->id,
                     $stuck,
-                    $alreadyShipped ? 'already shipped — date_left_warehouse set' : 'packed but not shipped',
+                    $alreadyShipped
+                        ? 'отгружено — date_left_warehouse заполнен'
+                        : 'упаковано, но не отгружено',
                     $released
                 ),
                 'kaspi.orders'
             );
         } else {
             Yii::info(
-                'Kaspi order ' . $kaspiOrderId . ' cancelled on Kaspi side — '
-                . $released . ' pre-pack stock rows released for outbound ' . (int) $outbound->id,
+                'Kaspi-заказ ' . $kaspiOrderId . ' отменён на стороне Kaspi — '
+                . 'освобождено ' . $released . ' строк стока до упаковки для отгрузки '
+                . (int) $outbound->id,
                 'kaspi.orders'
             );
         }

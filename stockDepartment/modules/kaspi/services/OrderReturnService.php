@@ -89,8 +89,9 @@ class OrderReturnService extends Component
             return [
                 'status'  => 'already_packed',
                 'message' => sprintf(
-                    'Outbound %d has %d packed/shipped stock rows — use return-flow '
-                    . '(scanning/index) or unpack manually before retrying',
+                    'У отгрузки %d есть %d упакованных/отгруженных строк стока — '
+                    . 'используйте возвратный флоу (/alix/ecommerce/returns/scanning/index) '
+                    . 'или физически распакуйте товар перед повторной попыткой.',
                     (int) $outbound->id,
                     $packedCount
                 ),
@@ -182,9 +183,9 @@ class OrderReturnService extends Component
                 : '';
             if ($orderStatus !== OrderStatus::ORDER_KASPI_DELIVERY_RETURN_REQUESTED) {
                 Yii::warning(
-                    'Kaspi return poll: order ' . $kaspiOrderId . ' has status='
-                    . ($orderStatus !== '' ? $orderStatus : '<empty>')
-                    . ' (expected KASPI_DELIVERY_RETURN_REQUESTED) — skipped',
+                    'Kaspi poll возвратов: у заказа ' . $kaspiOrderId . ' status='
+                    . ($orderStatus !== '' ? $orderStatus : '<пусто>')
+                    . ' (ожидался KASPI_DELIVERY_RETURN_REQUESTED) — пропущен',
                     'kaspi.return'
                 );
                 $skipped++;
