@@ -77,4 +77,18 @@ class InboundRepository
 			"client_id" => $this->getClientID(),
 		])->one();
 	}
+
+	/**
+	 * Все строки заказа приёмки — нужны для проведения прихода в 1С
+	 * (POST /hs/NMDX/InboundComplete) с фактическими количествами по позициям.
+	 *
+	 * @param int $inboundOrderId
+	 * @return InboundOrderItem[]
+	 */
+	public function getOrderItems($inboundOrderId)
+	{
+		return InboundOrderItem::find()
+			->andWhere(["inbound_order_id" => $inboundOrderId])
+			->all();
+	}
 }

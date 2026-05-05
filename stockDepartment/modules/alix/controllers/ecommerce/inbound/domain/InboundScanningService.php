@@ -56,8 +56,16 @@ class InboundScanningService
             $status = InboundAPIStatus::COMPLETED_WITH_DIFFERENCES;
         }
 
-        $dto = (new InboundAPIMapper())->makeByOrderStatusOrderResponseDTO($inboundOrder);
+        $mapper = new InboundAPIMapper();
+        $dto = $mapper->makeByOrderStatusOrderResponseDTO($inboundOrder);
         $this->apiService->sendStatusCompletedInbound($dto, $status);
+
+        // Дополнительный отдельный вызов: проведение прихода в 1С с фактическими
+        // количествами по строкам. ChangeDocumentStatus только меняет статус,
+        // сам документ проводится через InboundComplete.
+        $items = $this->inboundRepository->getOrderItems($inboundOrder->id);
+        $completeDto = $mapper->makeInboundCompleteRequestDTO($inboundOrder, $items, $status);
+        $this->apiService->sendInboundComplete($completeDto);
     }
 
     /**

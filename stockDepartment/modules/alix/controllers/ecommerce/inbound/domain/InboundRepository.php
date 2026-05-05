@@ -68,4 +68,18 @@ class InboundRepository
             ])
             ->one();
     }
+
+    /**
+     * Все строки ecommerce-приёмки — нужны для проведения прихода в 1С
+     * (POST /hs/NMDX/InboundComplete) с фактическими количествами по позициям.
+     *
+     * @param int $inboundOrderId
+     * @return EcommerceInboundItem[]
+     */
+    public function getOrderItems($inboundOrderId)
+    {
+        return EcommerceInboundItem::find()
+            ->andWhere(["inbound_id" => $inboundOrderId])
+            ->all();
+    }
 }
