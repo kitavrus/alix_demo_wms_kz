@@ -30,7 +30,6 @@ class ReportController extends Controller
 			"order_type"=>[
 				InboundOrder::ORDER_TYPE_RETURN,
 				InboundOrder::ORDER_TYPE_INBOUND,
-				InboundOrder::ORDER_TYPE_ECOMM_RETURN,
 			]
 		]);
 

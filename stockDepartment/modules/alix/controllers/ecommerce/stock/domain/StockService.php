@@ -3,7 +3,7 @@ namespace stockDepartment\modules\alix\controllers\ecommerce\stock\domain;
 
 
 use stockDepartment\modules\alix\controllers\ecommerce\stock\domain\constants\StockAPIStatus;
-use stockDepartment\modules\alix\controllers\inbound\returns\domain\entities\EcommerceInboundItem;
+use common\ecommerce\entities\EcommerceInboundItem;
 use stockDepartment\modules\alix\controllers\ecommerce\stock\domain\entities\EcommerceStock;
 use yii\helpers\ArrayHelper;
 use yii\helpers\VarDumper;

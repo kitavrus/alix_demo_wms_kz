@@ -21,9 +21,8 @@ use yii\web\Response;
  * Сканирование возвратов для alix-ecommerce на базе EcommerceReturn.
  * URL: /alix/ecommerce/returns/scanning/*
  *
- * Порт старого /alix/inbound/returns/scanning/*, InboundOrder/InboundOrderItem
- * заменены на EcommerceReturn/EcommerceReturnItem. Физические сканы пишутся
- * в ecommerce_stock (joined by return_id / return_item_id).
+ * Все возвраты (Kaspi/Alix/DeFacto) идут через EcommerceReturn / EcommerceReturnItem.
+ * Физические сканы пишутся в ecommerce_stock (joined by return_id / return_item_id).
  */
 class ScanningController extends Controller
 {
@@ -245,7 +244,7 @@ class ScanningController extends Controller
             $stock->save(false);
         } else {
             $stock = new EcommerceStock();
-            $stock->client_id = $clientId ?: (int) (EcommerceReturn::findOne($returnId)->client_id ?? 0);
+            $stock->client_id = $clientId ?: (int) (EcommerceReturn::findOne($returnId)->client_id ?: 0);
             $stock->box_address_barcode = $boxBarcode;
             $stock->return_id = $returnId;
             $stock->return_item_id = (int) $rItem->id;
@@ -390,7 +389,7 @@ class ScanningController extends Controller
 
         return [
             'success' => '1',
-            'countScannedProductInOrder' => $model->order_number ? (int) (EcommerceReturn::findOne($model->order_number)->accepted_qty ?? 0) : 0,
+            'countScannedProductInOrder' => $model->order_number ? (int) (EcommerceReturn::findOne($model->order_number)->accepted_qty ?: 0) : 0,
             'expected_qty' => $expectedQty,
             'items' => $this->renderPartial('_order_items', ['items' => $items]),
         ];
