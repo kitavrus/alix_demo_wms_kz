@@ -5,8 +5,11 @@ namespace stockDepartment\modules\alix\controllers\api\v1\inbound\mapper;
 use stockDepartment\modules\alix\controllers\api\v1\inbound\constants\StockInboundStatus;
 use stockDepartment\modules\alix\controllers\api\v1\inbound\dto\add_order\AddOrderItemResponseDTO;
 use stockDepartment\modules\alix\controllers\api\v1\inbound\dto\add_order\AddOrderResponseDTO;
+use stockDepartment\modules\alix\controllers\api\v1\inbound\dto\inbound_complete\InboundCompleteItemDTO;
+use stockDepartment\modules\alix\controllers\api\v1\inbound\dto\inbound_complete\InboundCompleteRequestDTO;
 use stockDepartment\modules\alix\controllers\api\v1\inbound\dto\OrderInfoDTO;
 use common\modules\inbound\models\InboundOrder;
+use common\modules\inbound\models\InboundOrderItem;
 use stockDepartment\modules\alix\controllers\api\v1\inbound\dto\status_order\StatusOrderResponseDTO;
 
 class InboundAPIMapper
@@ -112,6 +115,37 @@ class InboundAPIMapper
 		$r->orderNumber = $order->order_number;
 		$r->wmsId = $order->id;
 		$r->items = $products;
+		return $r;
+	}
+
+	/**
+	 * Сборка пэйлоада для POST /hs/NMDX/InboundComplete — фактическое
+	 * проведение прихода в 1С после завершения сканирования.
+	 *
+	 * Поля позиции маппятся напрямую из inbound_order_items, без обращения
+	 * к product_v2 — guid (=product_sku) и article (=product_model) уже сохранены
+	 * в строке заказа на этапе создания (см. ecommerce/api/v1/inbound/repository).
+	 *
+	 * @param InboundOrder       $order
+	 * @param InboundOrderItem[] $items
+	 * @param string             $status InboundAPIStatus::COMPLETED | COMPLETED_WITH_DIFFERENCES
+	 * @return InboundCompleteRequestDTO
+	 */
+	public function makeInboundCompleteRequestDTO($order, $items, $status) {
+		$r = new InboundCompleteRequestDTO();
+		$r->wmsId = strval($order->id);
+		$r->orderNumber = $order->order_number;
+		$r->status = $status;
+
+		foreach ($items as $item) {
+			$dtoItem = new InboundCompleteItemDTO();
+			$dtoItem->guid = strval($item->product_sku);
+			$dtoItem->article = strval($item->product_model);
+			$dtoItem->barcode = strval($item->product_barcode);
+			$dtoItem->quantity = (int) $item->accepted_qty;
+			$r->items[] = $dtoItem;
+		}
+
 		return $r;
 	}
 
