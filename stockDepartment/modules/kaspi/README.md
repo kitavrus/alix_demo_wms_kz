@@ -195,6 +195,7 @@ php yii cron/kaspi-poll-orders
 php yii cron/kaspi-sync-order-statuses
 php yii cron/kaspi-sync-completed-to-1c
 php yii cron/kaspi-poll-returns
+php yii cron/kaspi-rebuild-price-list
 php yii cron/alix-sync-items
 ```
 
@@ -205,6 +206,7 @@ php yii cron/alix-sync-items
 | `kaspi-sync-order-statuses`     | синх активных Kaspi-заказов: обновление `external_kaspi_status`, снятие резерва при отмене, пометка COMPLETED к передаче в 1С | каждые 15 мин |
 | `kaspi-sync-completed-to-1c`    | передача выполненных Kaspi-заказов в 1С (`Alix1CApiService::postSale` — заглушка) | каждые 30 мин |
 | `kaspi-poll-returns`            | poll `KASPI_DELIVERY_RETURN_REQUESTED`, идемпотентное создание `EcommerceInbound` (возвраты) | каждые 30 мин |
+| `kaspi-rebuild-price-list`      | перегенерация `kaspi-price-list.xml` + `.xlsx` на текущем состоянии стока (`status_availability=YES` → `COUNT(*)`) — закрывает рассинхрон публичного фида после продаж/возвратов | каждые 10 мин |
 | `alix-sync-items`               | синх номенклатуры 1C → product_v2 / product_barcodes_v2 | каждые 30 мин |
 
 ---

@@ -11,6 +11,7 @@ use stockDepartment\modules\kaspi\services\OneCSalesSyncService;
 use stockDepartment\modules\kaspi\services\OrderImportService;
 use stockDepartment\modules\kaspi\services\OrderReturnService;
 use stockDepartment\modules\kaspi\services\OrderStatusSyncService;
+use stockDepartment\modules\kaspi\services\PriceListService;
 use stockDepartment\modules\kaspi\services\PriceService;
 use stockDepartment\modules\kaspi\services\ProductSyncService;
 use common\modules\billing\models\TlDeliveryProposalBilling;
@@ -803,5 +804,46 @@ class CronController extends Controller
         }
 
         return $status === 'OK' ? 0 : 1;
+    }
+
+    /**
+     * Перегенерировать Kaspi-прайс-лист (XML + XLSX) на текущем состоянии стока.
+     *
+     * Без этого cron'а публичный XML `/kaspi-price-list.xml`, который Kaspi
+     * пуллит по расписанию из кабинета, обновлялся только при изменении цен
+     * (`/kaspi/api/v1/price-update`) или ручных триггерах. После продаж/возвратов
+     * фактический остаток в `ecommerce_stock` менялся, а stockCount в XML — нет,
+     * из-за чего Kaspi мог принять заказы на отсутствующий товар.
+     *
+     * Рекомендуемое расписание: каждые 10 минут.
+     *
+     * php yii cron/kaspi-rebuild-price-list
+     */
+    public function actionKaspiRebuildPriceList()
+    {
+        $module = Yii::$app->getModule('kaspi');
+        /** @var PriceListService|null $service */
+        $service = $module !== null ? $module->get('priceListService') : null;
+        if (!$service instanceof PriceListService) {
+            $service = new PriceListService();
+        }
+
+        $rows = $service->buildCurrentPriceList();
+
+        if (empty($rows)) {
+            echo "Kaspi price-list rebuild: status=skipped, rows=0\n";
+            return 0;
+        }
+
+        try {
+            $service->generateFromRows($rows);
+        } catch (\Exception $e) {
+            Yii::error('Kaspi price-list rebuild failed: ' . $e->getMessage(), 'kaspi');
+            echo "Kaspi price-list rebuild: status=error, message={$e->getMessage()}\n";
+            return 1;
+        }
+
+        echo "Kaspi price-list rebuild: status=generated, rows=" . count($rows) . "\n";
+        return 0;
     }
 }

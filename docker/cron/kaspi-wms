@@ -14,6 +14,14 @@
 # Логи: каждая команда пишет короткую сводку в /var/log/kaspi/*.log.
 # Перед включением создать директорию:
 #   sudo mkdir -p /var/log/kaspi && sudo chown www-data:www-data /var/log/kaspi
+#
+# Взаимоисключение через flock:
+#   kaspi-activate-pending-prices (*/30) и kaspi-rebuild-price-list (*/10) оба
+#   пишут в kaspi-price-list.xml/.xlsx (PriceListService::writeXml/writeExcel
+#   не атомарны: unlink → save). Расписания пересекаются в минуты 0 и 30 —
+#   при одновременной записи Kaspi может получить обрезанный XML / 404.
+#   Обёрнуты в `flock -n /tmp/kaspi-pricelist.lock`: при коллизии один тихо
+#   пропускается, через ≤10 минут отработает следующий тик.
 
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -44,4 +52,12 @@ MAILTO=""
 # --- Активация отложенных цен (kaspi_price_history, PENDING → SENT) ------------
 # Перегенерирует xlsx/xml при каждой активации. Нужна, только если через
 # POST /kaspi/api/v1/price-update присылают effective_from в будущем.
-*/30 * * * *   www-data   cd /var/www/html && php yii cron/kaspi-activate-pending-prices >> /var/log/kaspi/kaspi-activate-prices.log   2>&1
+# flock — взаимоисключение с kaspi-rebuild-price-list (пишут те же файлы).
+*/30 * * * *   www-data   /usr/bin/flock -n /tmp/kaspi-pricelist.lock -c 'cd /var/www/html && php yii cron/kaspi-activate-pending-prices >> /var/log/kaspi/kaspi-activate-prices.log   2>&1'
+
+# --- Перегенерация публичного прайс-листа (kaspi-price-list.xml/.xlsx) ---------
+# Закрывает рассинхрон между фидом, который Kaspi пуллит, и фактическим стоком
+# в ecommerce_stock после продаж/возвратов. Без этого XML обновлялся только
+# при изменении цены (POST /kaspi/api/v1/price-update).
+# flock — взаимоисключение с kaspi-activate-pending-prices.
+*/10 * * * *   www-data   /usr/bin/flock -n /tmp/kaspi-pricelist.lock -c 'cd /var/www/html && php yii cron/kaspi-rebuild-price-list      >> /var/log/kaspi/kaspi-rebuild-price-list.log 2>&1'
