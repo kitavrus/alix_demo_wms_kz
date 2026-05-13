@@ -252,6 +252,11 @@ class ScanningController extends Controller
             $stock->return_id = $returnId;
             $stock->return_item_id = (int) $rItem->id;
             $stock->box_address_barcode = $boxBarcode;
+            // Отгрузочная коробка ушла к клиенту вместе с заказом — на момент
+            // возврата её ШК больше не валиден; box_address_barcode выше уже
+            // указывает на новый короб приёмки.
+            $stock->box_barcode = '';
+            $stock->outbound_box = '';
             $stock->status = EcommerceStock::STATUS_INBOUND_SCANNED;
             $stock->status_availability = EcommerceStock::STATUS_AVAILABILITY_NOT_SET;
             $stock->scan_in_datetime = $now;
