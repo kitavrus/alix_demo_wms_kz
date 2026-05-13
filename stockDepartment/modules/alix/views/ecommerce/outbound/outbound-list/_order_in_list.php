@@ -16,10 +16,14 @@ use yii\helpers\Html;
         <td>номер заказ</td>
         <td>Defacto TTN</td>
         <td>Номер листа</td>
+		<td>Этикетка Kaspi</td>
 		<td>Удалить</td>
     </thead>
 <?php $totalQty = count($orderInList); ?>
-<?php foreach($orderInList as $key=>$productRow)  { ?>
+<?php foreach($orderInList as $key=>$productRow)  {
+    $clientOrderNumber = (string)$productRow['client_order_number'];
+    $isKaspiOrder = strpos($clientOrderNumber, 'KASPI-') === 0;
+?>
     <tr class="alert-success">
         <td><?= $totalQty-$key; ?></td>
         <td><?= $productRow['package_barcode']; ?></td>
@@ -27,6 +31,13 @@ use yii\helpers\Html;
         <td><?= $productRow['client_order_number']; ?></td>
         <td><?= $productRow['ttn_delivery_company']; ?></td>
         <td><?= $productRow['list_title']; ?></td>
+        <td><?php if ($isKaspiOrder) {
+            echo Html::a(
+                'Этикетка Kaspi',
+                ['/alix/ecommerce/outbound/scanning/kaspi-label', 'orderNumber' => $clientOrderNumber],
+                ['class' => 'btn btn-primary btn-sm', 'target' => '_blank']
+            );
+        } ?></td>
 		        <td><?php if($productRow['status'] == \common\ecommerce\constants\OutboundListStatus::NO) {
         	    echo Html::a(
         	    		Yii::t('outbound/buttons', 'Удалить'),

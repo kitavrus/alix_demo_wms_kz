@@ -69,8 +69,8 @@ class OutboundReservationService
 					$item->allocated_qty +=1;
 					$allocateQty++;
 					//STOCK
-					$stock->ecom_outbound_id =  $orderInfo->order->id;
-					$stock->ecom_outbound_items_id = $item->id;
+					$stock->outbound_id =  $orderInfo->order->id;
+					$stock->outbound_item_id = $item->id;
 					$stock->status = Stock::STATUS_OUTBOUND_FULL_RESERVED;
 					$stock->status_availability = Stock::STATUS_AVAILABILITY_RESERVED;
 					$stock->save(false);

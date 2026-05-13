@@ -105,6 +105,17 @@ use yii\helpers\Html;
             Yii::t('outbound/buttons', 'Все курьерки'),
             ['data-url' => Url::toRoute('show-kaspi-orders'), 'class' => 'btn btn-warning', 'id' => 'outboundlistform-show-kaspi-orders-bt', 'style' => 'margin-left:10px;']
         ) ?>
+        <?php $waitingCount = isset($kaspiWaitingCount) ? (int) $kaspiWaitingCount : 0; ?>
+        <?= Html::tag(
+            'span',
+            'Ждут Kaspi-этикетку (' . $waitingCount . ')',
+            [
+                'data-url' => Url::toRoute('show-kaspi-waiting-label'),
+                'class' => 'btn ' . ($waitingCount > 0 ? 'btn-danger' : 'btn-default'),
+                'id' => 'outboundlistform-kaspi-waiting-label-bt',
+                'style' => 'margin-left:10px;',
+            ]
+        ) ?>
     </div>
 
     <div id="error-container">
