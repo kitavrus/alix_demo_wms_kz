@@ -3,6 +3,7 @@
 namespace stockDepartment\modules\alix\controllers\ecommerce\returns;
 
 use common\ecommerce\constants\ReturnOutboundStatus;
+use common\ecommerce\entities\EcommerceOutboundItem;
 use common\ecommerce\entities\EcommerceReturn;
 use common\ecommerce\entities\EcommerceReturnItem;
 use common\ecommerce\entities\EcommerceStock;
@@ -11,6 +12,8 @@ use common\modules\client\models\Client;
 use stockDepartment\components\Controller;
 use stockDepartment\modules\alix\controllers\ecommerce\returns\domain\ReturnRepository;
 use stockDepartment\modules\alix\controllers\ecommerce\returns\domain\ReturnScanningForm;
+use stockDepartment\modules\kaspi\models\ProductBarcodesV2;
+use stockDepartment\modules\kaspi\models\ProductV2;
 use stockDepartment\modules\kaspi\services\OrderReturnService;
 use Yii;
 use yii\bootstrap\ActiveForm;
@@ -199,52 +202,67 @@ class ScanningController extends Controller
         $clientId = (int) $model->client_id;
         $now = time();
 
-        // Найти или создать строку EcommerceReturnItem
+        $return = EcommerceReturn::findOne($returnId);
+        $sourceOutboundId = $return ? (int) $return->outbound_id : 0;
+        if ($clientId <= 0 && $return) {
+            $clientId = (int) $return->client_id;
+        }
+        $employeeId = Yii::$app->user && !Yii::$app->user->isGuest ? (int) Yii::$app->user->id : 0;
+
+        // Найти или создать строку EcommerceReturnItem. При создании дописываем
+        // product_id из исходной outbound-позиции — иначе ReturnItem остаётся
+        // без идентификатора товара и теряет связь с каталогом.
         $rItem = EcommerceReturnItem::findOne([
             'return_id' => $returnId,
             'product_barcode' => $productBarcode,
         ]);
         if (!$rItem) {
-            // Ручной возврат без pre-linked item — создаём.
             $rItem = new EcommerceReturnItem();
             $rItem->return_id = $returnId;
             $rItem->product_barcode = $productBarcode;
             $rItem->expected_qty = 1;
             $rItem->accepted_qty = 0;
             $rItem->status = ReturnOutboundStatus::SCANNING;
+            $rItem->product_id = $this->resolveProductId($sourceOutboundId, $productBarcode);
             $rItem->created_at = $now;
             $rItem->updated_at = $now;
             $rItem->deleted = 0;
             $rItem->save(false);
         }
 
-        // Физика: если возврат связан с Kaspi-заказом, poll заранее пометил
-        // stock-строку return_id + product_barcode. Обновляем её (одна физическая
-        // единица — одна запись). Если pre-linked строки не осталось (все уже
-        // отсканированы или это ручной возврат) — создаём новую.
-        $stock = EcommerceStock::find()
-            ->andWhere([
-                'return_id' => $returnId,
-                'product_barcode' => $productBarcode,
-            ])
-            ->andWhere(['not in', 'status', [
-                EcommerceStock::STATUS_INBOUND_SCANNED,
-                EcommerceStock::STATUS_INBOUND_OVER_SCANNED,
-                EcommerceStock::STATUS_INBOUND_CONFIRM,
-            ]])
-            ->orderBy(['id' => SORT_ASC])
-            ->one();
+        // Физика: ищем EcommerceStock-ячейку в три приоритета, чтобы возврат
+        // переписывал ту же запись, а не плодил пустые дубли.
+        //
+        //  1. pre-linked (Kaspi poll уже привязал return_id) — обычное поведение
+        //     для Kaspi-возвратов;
+        //  2. исходная отгруженная единица — `outbound_id` совпадает с
+        //     `return->outbound_id`, return_id ещё не выставлен — это та самая
+        //     ячейка, которая физически ушла со склада и сейчас возвращается.
+        //     Перезаписываем — product_* остаются нетронутыми;
+        //  3. over-scan — реального исходника нет, создаём новую запись, но
+        //     обогащаем product_* из последней stock-записи по тому же штрихкоду
+        //     или из карточки ProductV2.
+        $stock = $this->findPreLinkedStock($returnId, $productBarcode);
+
+        if ($stock === null && $sourceOutboundId > 0) {
+            $stock = $this->findSourceOutboundStock($sourceOutboundId, $productBarcode);
+        }
 
         if ($stock !== null) {
+            $stock->return_id = $returnId;
+            $stock->return_item_id = (int) $rItem->id;
             $stock->box_address_barcode = $boxBarcode;
             $stock->status = EcommerceStock::STATUS_INBOUND_SCANNED;
-            $stock->return_item_id = (int) $rItem->id;
+            $stock->status_availability = EcommerceStock::STATUS_AVAILABILITY_NOT_SET;
             $stock->scan_in_datetime = $now;
+            if ($employeeId > 0) {
+                $stock->scan_in_employee_id = $employeeId;
+            }
             $stock->updated_at = $now;
             $stock->save(false);
         } else {
             $stock = new EcommerceStock();
-            $stock->client_id = $clientId ?: (int) (EcommerceReturn::findOne($returnId)->client_id ?: 0);
+            $stock->client_id = $clientId;
             $stock->box_address_barcode = $boxBarcode;
             $stock->return_id = $returnId;
             $stock->return_item_id = (int) $rItem->id;
@@ -252,6 +270,10 @@ class ScanningController extends Controller
             $stock->status = EcommerceStock::STATUS_INBOUND_SCANNED;
             $stock->status_availability = EcommerceStock::STATUS_AVAILABILITY_NOT_SET;
             $stock->scan_in_datetime = $now;
+            if ($employeeId > 0) {
+                $stock->scan_in_employee_id = $employeeId;
+            }
+            $this->enrichStockFromCatalog($stock, $productBarcode, $clientId);
             $stock->save(false);
         }
 
@@ -274,7 +296,6 @@ class ScanningController extends Controller
         $rItem->updated_at = $now;
         $rItem->save(false);
 
-        $return = EcommerceReturn::findOne($returnId);
         if ($return) {
             if (empty($return->begin_datetime)) {
                 $return->begin_datetime = $now;
@@ -550,6 +571,115 @@ class ScanningController extends Controller
             return $this->render('print/list-differences-html', ['items' => $items]);
         }
         return $this->render('print/list-differences-pdf', ['items' => $items]);
+    }
+
+    /**
+     * Pre-linked сток: Kaspi poll или ручное связывание уже выставили return_id
+     * на физической единице. Берём её первой, чтобы не плодить дубль.
+     */
+    private function findPreLinkedStock($returnId, $productBarcode)
+    {
+        return EcommerceStock::find()
+            ->andWhere([
+                'return_id' => $returnId,
+                'product_barcode' => $productBarcode,
+            ])
+            ->andWhere(['not in', 'status', [
+                EcommerceStock::STATUS_INBOUND_SCANNED,
+                EcommerceStock::STATUS_INBOUND_OVER_SCANNED,
+                EcommerceStock::STATUS_INBOUND_CONFIRM,
+            ]])
+            ->andWhere(['deleted' => 0])
+            ->orderBy(['id' => SORT_ASC])
+            ->one();
+    }
+
+    /**
+     * Исходная отгруженная физическая единица. У такой строки уже заполнены
+     * product_id / product_sku / product_name / product_model — её и
+     * перезаписываем при сканировании возврата.
+     */
+    private function findSourceOutboundStock($sourceOutboundId, $productBarcode)
+    {
+        return EcommerceStock::find()
+            ->andWhere([
+                'outbound_id' => (int) $sourceOutboundId,
+                'product_barcode' => $productBarcode,
+            ])
+            ->andWhere(['or', ['return_id' => 0], ['return_id' => null]])
+            ->andWhere(['deleted' => 0])
+            ->orderBy(['id' => SORT_ASC])
+            ->one();
+    }
+
+    /**
+     * product_id для EcommerceReturnItem: сначала по позиции исходной отгрузки
+     * (если возврат привязан к outbound), иначе резолвим штрихкод через карточку
+     * ProductV2 / ProductBarcodesV2.
+     */
+    private function resolveProductId($sourceOutboundId, $productBarcode)
+    {
+        if ($sourceOutboundId > 0) {
+            $oItem = EcommerceOutboundItem::find()
+                ->andWhere(['outbound_id' => (int) $sourceOutboundId])
+                ->andWhere(['product_barcode' => $productBarcode])
+                ->andWhere(['deleted' => 0])
+                ->one();
+            if ($oItem && (int) $oItem->product_id > 0) {
+                return (int) $oItem->product_id;
+            }
+        }
+
+        $barcodeRow = ProductBarcodesV2::find()
+            ->andWhere(['barcode' => $productBarcode])
+            ->one();
+        if ($barcodeRow) {
+            return (int) $barcodeRow->product_id;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Over-scan: реального исходника не нашли. Заполняем product_* у новой
+     * stock-записи из последней живой записи по тому же barcode/client (там
+     * product_* уже корректные после inbound), либо как fallback — из карточки
+     * ProductV2.
+     */
+    private function enrichStockFromCatalog(EcommerceStock $stock, $productBarcode, $clientId)
+    {
+        $reference = EcommerceStock::find()
+            ->andWhere(['client_id' => (int) $clientId])
+            ->andWhere(['product_barcode' => $productBarcode])
+            ->andWhere(['deleted' => 0])
+            ->andWhere(['not', ['product_id' => null]])
+            ->andWhere(['!=', 'product_id', 0])
+            ->orderBy(['id' => SORT_DESC])
+            ->one();
+
+        if ($reference !== null) {
+            $stock->product_id = (int) $reference->product_id;
+            $stock->product_sku = (string) $reference->product_sku;
+            $stock->product_name = (string) $reference->product_name;
+            $stock->product_model = (string) $reference->product_model;
+            $stock->product_price = (string) $reference->product_price;
+            return;
+        }
+
+        $barcodeRow = ProductBarcodesV2::find()
+            ->andWhere(['barcode' => $productBarcode])
+            ->one();
+        if ($barcodeRow === null) {
+            return;
+        }
+        $product = ProductV2::findOne((int) $barcodeRow->product_id);
+        if ($product === null) {
+            return;
+        }
+        $stock->product_id = (int) $product->id;
+        $stock->product_sku = (string) $product->guid;
+        $stock->product_name = (string) $product->name;
+        $stock->product_model = (string) $product->article;
     }
 
     public function actionPrintUnallocatedList()
