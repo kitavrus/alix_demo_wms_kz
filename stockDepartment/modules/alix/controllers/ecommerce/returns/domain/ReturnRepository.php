@@ -94,6 +94,27 @@ class ReturnRepository
             $rItem->save(false);
         }
 
+        // Pre-link сток исходной отгрузки на новый возврат: все ещё-непривязанные
+        // ячейки этого outbound получают return_id и status_availability=NOT_SET.
+        // Иначе после создания шапки сток остаётся в RESERVED (=3) от старого
+        // outbound, и сканирование возврата плодит лишние записи вместо
+        // перезаписи. Симметрично тому, как это делает Kaspi poll.
+        if ($sourceOutbound !== null) {
+            EcommerceStock::updateAll(
+                [
+                    'return_id' => (int) $return->id,
+                    'status_availability' => EcommerceStock::STATUS_AVAILABILITY_NOT_SET,
+                    'updated_at' => $now,
+                ],
+                [
+                    'and',
+                    ['outbound_id' => (int) $sourceOutbound->id],
+                    ['or', ['return_id' => 0], ['return_id' => null]],
+                    ['deleted' => 0],
+                ]
+            );
+        }
+
         $this->returnID = (int) $return->id;
         return $this->returnID;
     }
