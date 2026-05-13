@@ -75,6 +75,7 @@ use Yii;
  * @property int $created_at Created at
  * @property int $updated_at Updated at
  * @property int $deleted Deleted
+ * @property int $kaspi_label_fetched_at UNIX ts успешного скачивания Kaspi-этикетки
  */
 class EcommerceOutbound extends \common\models\ActiveRecord
 {
@@ -100,7 +101,7 @@ class EcommerceOutbound extends \common\models\ActiveRecord
     public function rules()
     {
         return [
-            [['api_status','client_Priority','client_id', 'responsible_delivery_id', 'expected_qty', 'allocated_qty', 'accepted_qty', 'place_expected_qty', 'place_accepted_qty', 'status', 'elevator', 'payment_method', 'payment_status', 'data_created_on_client', 'print_picking_list_date', 'begin_datetime', 'end_datetime', 'packing_date', 'date_left_warehouse', 'date_delivered_to_customer', 'created_user_id', 'updated_user_id', 'created_at', 'updated_at', 'deleted'], 'integer'],
+            [['api_status','client_Priority','client_id', 'responsible_delivery_id', 'expected_qty', 'allocated_qty', 'accepted_qty', 'place_expected_qty', 'place_accepted_qty', 'status', 'elevator', 'payment_method', 'payment_status', 'data_created_on_client', 'print_picking_list_date', 'begin_datetime', 'end_datetime', 'packing_date', 'date_left_warehouse', 'date_delivered_to_customer', 'created_user_id', 'updated_user_id', 'created_at', 'updated_at', 'deleted', 'kaspi_label_fetched_at'], 'integer'],
             [['mc', 'kg'], 'number'],
             [['customer_comment', 'ttn'], 'string'],
             [['customer_name'], 'string'],

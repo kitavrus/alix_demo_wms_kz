@@ -13,6 +13,7 @@ $(function() {
     var packageBarcodeQty = formID+'-package-barcode-qty';
     var packedNotScannedBtID = formID+'-packed-not-scanned-bt';
     var showKaspiOrdersBtID = formID+'-show-kaspi-orders-bt';
+    var kaspiWaitingLabelBtID = formID+'-kaspi-waiting-label-bt';
     var deleteListBt = '.delete-list-bt';
 
     var showOrderInListContainer = '#show-order-in-list-container';
@@ -188,6 +189,30 @@ $(function() {
 
     // SHOW PACKED BUT NOT SCANNED TO LIST
     b.on('click',packedNotScannedBtID, function (e) {
+        e.preventDefault();
+
+        var me = $(this),
+            url = me.data('url'),
+            form = $(formID);
+
+
+        errorBase.setForm(form);
+        errorBase.hidden();
+
+        $.post(url, form.serialize(),function (result) {
+            if (result.success == 0 ) {
+                errorBase.eachShow(result.errors);
+                addFocusSelect(me);
+            } else {
+                errorBase.hidden();
+                showOrdersInList(result.result);
+            }
+        }, 'json').fail(function (xhr, textStatus, errorThrown) {
+        });
+    });
+
+    // SHOW KASPI ORDERS WAITING FOR LABEL
+    b.on('click',kaspiWaitingLabelBtID, function (e) {
         e.preventDefault();
 
         var me = $(this),

@@ -152,6 +152,42 @@ class OutboundListService
             ->all();
     }
 
+    /**
+     * Kaspi-заказы, упакованные на складе, но ещё не получившие PDF-этикетку
+     * из Kaspi (kaspi_label_fetched_at = NULL). Используется для UI-списка
+     * «Ждут Kaspi-этикетку» на форме листа отгрузки.
+     */
+    public function kaspiOrdersWaitingLabel()
+    {
+        return EcommerceOutbound::find()
+            ->select('id, status, order_number, external_order_number, packing_date, client_CargoCompany')
+            ->andWhere([
+                'client_id' => 103,
+                'is_kaspi_delivery' => 1,
+                'deleted' => 0,
+                'kaspi_label_fetched_at' => null,
+            ])
+            ->andWhere(['!=', 'external_order_number', ''])
+            ->andWhere(['>=', 'status', OutboundStatus::getPACKED()])
+            ->orderBy(['packing_date' => SORT_ASC])
+            ->asArray()
+            ->all();
+    }
+
+    public function kaspiOrdersWaitingLabelCount()
+    {
+        return (int) EcommerceOutbound::find()
+            ->andWhere([
+                'client_id' => 103,
+                'is_kaspi_delivery' => 1,
+                'deleted' => 0,
+                'kaspi_label_fetched_at' => null,
+            ])
+            ->andWhere(['!=', 'external_order_number', ''])
+            ->andWhere(['>=', 'status', OutboundStatus::getPACKED()])
+            ->count();
+    }
+
     public function allOrdersInAllOutboundList($title) {
         return EcommerceOutboundList::find()->select('list_title,courier_company, count(courier_company) as orderQty')->andWhere([
             'list_title'=>$title,

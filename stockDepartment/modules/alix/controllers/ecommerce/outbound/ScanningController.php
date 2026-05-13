@@ -326,8 +326,14 @@ class ScanningController extends Controller
 			$numberOfSpace = 1;
 		}
 
+		// При первом скачивании дёргаем ASSEMBLE; при повторном — только лейбл,
+		// иначе Kaspi отдаст ошибку «заказ уже в ASSEMBLE».
+		$alreadyFetched = !empty($outbound->kaspi_label_fetched_at);
+
 		try {
-			$kaspiService->transferToCourier($kaspiOrderId, ['numberOfSpace' => $numberOfSpace]);
+			if (!$alreadyFetched) {
+				$kaspiService->transferToCourier($kaspiOrderId, ['numberOfSpace' => $numberOfSpace]);
+			}
 			$label = $kaspiService->getOrderLabel($kaspiOrderId);
 		} catch (\Throwable $e) {
 			Yii::error('Kaspi label fetch failed for ' . $kaspiOrderId . ': ' . $e->getMessage(), __METHOD__);
@@ -339,6 +345,10 @@ class ScanningController extends Controller
 			Yii::$app->session->setFlash('danger', 'Kaspi вернул пустую накладную');
 			return $this->redirect('/alix/ecommerce/outbound/scanning/scanning-form');
 		}
+
+		// Этикетка получена — фиксируем, чтобы заказ ушёл из списка «ждут этикетку».
+		$outbound->kaspi_label_fetched_at = time();
+		$outbound->save(false, ['kaspi_label_fetched_at', 'updated_at']);
 
 		$mime = isset($label['mime']) ? (string) $label['mime'] : 'application/pdf';
 		$fileName = 'kaspi-label-' . preg_replace('/[^A-Za-z0-9_\-]/', '_', $kaspiOrderId) . '.pdf';

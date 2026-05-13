@@ -26,7 +26,11 @@ class OutboundListController extends Controller
 	{  //
 		$form = new OutboundListForm();
 		$form->title = date('d-m-Y');
-		return $this->render('scanning-form',['model'=>$form]);
+		$kaspiWaitingCount = (new OutboundListService())->kaspiOrdersWaitingLabelCount();
+		return $this->render('scanning-form', [
+			'model' => $form,
+			'kaspiWaitingCount' => $kaspiWaitingCount,
+		]);
 	}
 	/*
 	* DONE
@@ -217,6 +221,36 @@ class OutboundListController extends Controller
 			$service = new OutboundListService();
 			$anyCourierCompany = $service->showAllOrdersInAllOutboundList($scanForm->getDTO()->title); // $scanForm->getDTO()->title
 			$result = $this->renderPartial('_any_courier_company',['anyCourierCompany'=>$anyCourierCompany]);
+		} else {
+			$errors = ActiveForm::validate($scanForm);
+		}
+		return [
+			'success' => (empty($errors) ? '1' : '0'),
+			'errors' => $errors,
+			'messages' => $messages,
+			'result' => $result,
+		];
+	}
+
+	/**
+	 * Список упакованных Kaspi-заказов, для которых ещё не скачана PDF-этикетка.
+	 * Kaspi отдаёт waybill не сразу после ASSEMBLE — этот список нужен, чтобы
+	 * кладовщик мог вернуться к таким коробам через какое-то время и добить.
+	 */
+	public function actionShowKaspiWaitingLabel()
+	{
+		Yii::$app->response->format = Response::FORMAT_JSON;
+
+		$errors = [];
+		$messages = '';
+		$result = '';
+		$scanForm = new OutboundListForm();
+		$scanForm->setScenario(OutboundListForm::SCENARIO_SHOW_KASPI_WAITING_LABEL);
+
+		if ($scanForm->load(Yii::$app->request->post()) && $scanForm->validate()) {
+			$service = new OutboundListService();
+			$orders = $service->kaspiOrdersWaitingLabel();
+			$result = $this->renderPartial('_kaspi_waiting_label', ['orders' => $orders]);
 		} else {
 			$errors = ActiveForm::validate($scanForm);
 		}

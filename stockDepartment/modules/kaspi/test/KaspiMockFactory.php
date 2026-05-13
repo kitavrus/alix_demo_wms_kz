@@ -16,7 +16,7 @@ class KaspiMockFactory
     private static $defaultProductName = 'РАСЦЕПЛЯЕМАЯ ПУДРА 01 ПРОЗРАЧНАЯ';
     private static $defaultProductPrice = 99999;
     /** @var int Количество в outbound-позиции (сколько купили). Меняется в тестах. */
-    public static $defaultOrderQuantity = 5;
+    public static $defaultOrderQuantity = 1;
     /** @var int|null Сколько клиент возвращает из купленного. null = полный возврат (= $defaultOrderQuantity). */
     public static $defaultReturnedQuantity = null;
     /** @var string Refund code для синтезированного mock-ответа (уникален per test). */
@@ -133,6 +133,54 @@ class KaspiMockFactory
                 'kaspiDelivery' => [
                     'waybill' => 'https://kaspi.kz/shop/api/waybill/MOCK-NUR-OTEyMjgyNjI5',
                     'waybillNumber' => '405934783',
+                    'courierTransmissionDate' => null,
+                    'courierTransmissionPlanningDate' => $nowMs + 1 * 86400 * 1000,
+                    'express' => false,
+                    'returnedToWarehouse' => false,
+                    'firstMileCourier' => null,
+                ],
+            ]),
+
+            // ───────── Нурбек (курьерская доставка), ACCEPTED_BY_MERCHANT, assembled ─────────
+            // Клон OTEyMjgyNjI5, но deliveryMode = DELIVERY_REGIONAL_TODOOR.
+            // Нужен для проверки полного цикла отгрузки с печатью этикетки курьеру
+            // (DELIVERY_PICKUP по сути — отдача водителю Kaspi из ПВЗ, а курьерская —
+            // выезд курьера к покупателю на адрес).
+            'OTEyMjgyOTAw' => self::buildOrderResource('OTEyMjgyOTAw', [
+                'code' => '912282900',
+                'status' => 'ACCEPTED_BY_MERCHANT',
+                'state' => 'KASPI_DELIVERY',
+                'totalPrice' => 1690,
+                'deliveryCostForSeller' => 173,
+                'deliveryCost' => 500,
+                'deliveryMode' => 'DELIVERY_REGIONAL_TODOOR',
+                'creationDate' => $nowMs - 1 * 86400 * 1000,
+                'approvedByBankDate' => $nowMs - 1 * 86400 * 1000,
+                'plannedDeliveryDate' => $nowMs + 2 * 86400 * 1000,
+                'assembled' => true,
+                'customer' => [
+                    'id' => 'NzAyNjM4NTcwNQ',
+                    'firstName' => 'Нурбек',
+                    'lastName' => 'О',
+                    'name' => 'Нурбек',
+                    'cellPhone' => '7026385705',
+                ],
+                'deliveryAddress' => [
+                    'streetName' => 'улица Абая',
+                    'streetNumber' => '150',
+                    'town' => 'Шымкент',
+                    'district' => null,
+                    'building' => null,
+                    'apartment' => '12',
+                    'formattedAddress' => 'Шымкент, улица Абая, 150, кв. 12',
+                    'latitude' => 42.317117,
+                    'longitude' => 69.595931,
+                ],
+                'kaspiDelivery' => [
+                    // Тот же waybill URL — мок печати этикетки возвращает PDF для любого orderId,
+                    // так что повторение URL не критично для теста цикла.
+                    'waybill' => 'https://kaspi.kz/shop/api/waybill/MOCK-NUR-OTEyMjgyNjI5',
+                    'waybillNumber' => '405934784',
                     'courierTransmissionDate' => null,
                     'courierTransmissionPlanningDate' => $nowMs + 1 * 86400 * 1000,
                     'express' => false,
