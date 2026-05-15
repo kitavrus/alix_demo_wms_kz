@@ -10,7 +10,7 @@ class KaspiConstants
 {
     const BASE_URL = 'https://kaspi.kz/shop/api/v2/';
     const PRODUCTS_API_BASE_URL = 'https://kaspi.kz/shop/api/';
-    const DEFAULT_USE_MOCK = true; // Поставить false для реальных запросов
+    const DEFAULT_USE_MOCK = false; // Поставить false для реальных запросов
     const DEFAULT_HTTP_LOG = false;
     const DEFAULT_ALLOW_GUEST_API = true;
 

@@ -115,7 +115,6 @@ class kaspi extends Module
             'username' => (string) $this->alix1cUsername,
             'password' => (string) $this->alix1cPassword,
             'timeoutSeconds' => (int) $this->alix1cTimeoutSeconds,
-            'httpLogEnabled' => (bool) $this->httpLog,
         ]);
         $this->set('productSyncService', [
             'class' => ProductSyncService::class,

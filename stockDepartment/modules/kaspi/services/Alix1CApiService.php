@@ -8,6 +8,7 @@ use stockDepartment\modules\kaspi\exceptions\KaspiApiException;
 use Yii;
 use yii\base\Component;
 use yii\httpclient\Client as HttpClient;
+use yii\httpclient\Response;
 use yii\log\Logger;
 
 /**
@@ -33,8 +34,12 @@ class Alix1CApiService extends Component
     /** @var int Таймаут запроса, сек. */
     public $timeoutSeconds = KaspiConstants::ALIX_1C_DEFAULT_TIMEOUT;
 
-    /** @var bool Включить trace-лог HTTP-запроса/ответа. */
-    public $httpLogEnabled = false;
+    /**
+     * Порог: тело ответа крупнее этого размера дампится только как
+     * "[body suppressed: N bytes]", чтобы не засорять лог гигантскими
+     * JSON-выгрузками номенклатуры или HTML-страницами 404 от IIS.
+     */
+    const MAX_RESPONSE_BODY_DUMP_BYTES = 8192;
 
     /** @var HttpClient|null */
     private $_httpClient;
@@ -43,7 +48,7 @@ class Alix1CApiService extends Component
     {
         parent::init();
         $this->_httpClient = new HttpClient([
-            'baseUrl' => rtrim($this->baseUrl, '/') . '/',
+            'baseUrl' => rtrim($this->baseUrl, '/'),
         ]);
     }
 
@@ -66,15 +71,18 @@ class Alix1CApiService extends Component
         );
         $request->headers->set('Accept', 'application/json');
 
-        $this->logTrace('Alix 1C items request:', $request->toString());
+        $startedAt = microtime(true);
 
         try {
             $response = $request->send();
         } catch (\Exception $e) {
+            $this->logHttpExchange(Logger::LEVEL_ERROR, 'getItems transport error', $request, null, $startedAt, $e);
             throw new KaspiApiException('Alix 1C API transport error: ' . $e->getMessage(), 0, $e);
         }
 
-        $this->logTrace('Alix 1C items response:', $response->toString());
+        $level = $response->isOk ? Logger::LEVEL_INFO : Logger::LEVEL_ERROR;
+        $label = $response->isOk ? 'getItems OK' : 'getItems HTTP ' . $response->statusCode;
+        $this->logHttpExchange($level, $label, $request, $response, $startedAt);
 
         if (!$response->isOk) {
             $body = substr((string) $response->content, 0, 2000);
@@ -144,15 +152,121 @@ class Alix1CApiService extends Component
         ];
     }
 
-    private function logTrace($label, $content)
+    /**
+     * Полный дамп HTTP-обмена в категорию alix.1c
+     * (маршрутизируется в @runtime/logs/alix/1c.log).
+     *
+     * В сообщение попадает: method+URL+query, заголовки и тело запроса
+     * (Authorization маскируется), статус+заголовки+тело ответа, длительность.
+     * Тело ответа подменяется на "[body suppressed: N bytes]", если оно
+     * HTML или крупнее MAX_RESPONSE_BODY_DUMP_BYTES.
+     */
+    private function logHttpExchange($level, $label, $request, $response, $startedAt, \Exception $exception = null)
     {
-        if (!$this->httpLogEnabled || !Yii::$app->has('log')) {
+        if (!Yii::$app->has('log')) {
             return;
         }
+
+        $parts = [
+            'Alix 1C ' . $label . ' (' . $this->elapsedMs($startedAt) . ' ms)',
+        ];
+        $caller = $this->resolveCaller();
+        if ($caller !== null) {
+            $parts[] = 'Called from: ' . $caller;
+        }
+        $parts[] = '=== REQUEST ===';
+        $parts[] = $this->maskSecrets($this->safeDump($request));
+
+        if ($exception !== null) {
+            $parts[] = '=== TRANSPORT ERROR ===';
+            $parts[] = get_class($exception) . ': ' . $exception->getMessage();
+        }
+
+        if ($response !== null) {
+            $parts[] = '=== RESPONSE ===';
+            $parts[] = $this->safeDump($response);
+        }
+
         Yii::getLogger()->log(
-            $label . "\n" . $content,
-            Logger::LEVEL_TRACE,
+            implode("\n", $parts),
+            $level,
             KaspiConstants::LOG_CATEGORY_ALIX_1C
         );
+    }
+
+    private function safeDump($message)
+    {
+        // Для большого/HTML-ответа не вызываем toString() и не применяем regex
+        // к телу — на старом PCRE pattern с backtracking даёт SIGSEGV
+        // (наблюдается на PHP 5.6 + ответе > ~200KB).
+        if ($message instanceof Response) {
+            $bytes = strlen((string) $message->content);
+            $suppress = $this->isHtmlResponse($message) || $bytes > self::MAX_RESPONSE_BODY_DUMP_BYTES;
+            if ($suppress) {
+                return $this->renderResponseHeadersOnly($message, $bytes);
+            }
+        }
+
+        try {
+            return (string) $message->toString();
+        } catch (\Throwable $t) {
+            return '[failed to dump: ' . $t->getMessage() . ']';
+        }
+    }
+
+    private function renderResponseHeadersOnly(Response $response, $bytes)
+    {
+        $lines = ['HTTP/1.1 ' . $response->statusCode];
+        try {
+            foreach ($response->headers as $name => $values) {
+                $values = is_array($values) ? $values : [$values];
+                $lines[] = $name . ': ' . implode(', ', $values);
+            }
+        } catch (\Throwable $t) {
+            $lines[] = '[failed to dump headers: ' . $t->getMessage() . ']';
+        }
+        $lines[] = '';
+        $lines[] = '[body suppressed: ' . $bytes . ' bytes]';
+        return implode("\n", $lines);
+    }
+
+    private function isHtmlResponse(Response $response)
+    {
+        $contentType = (string) $response->headers->get('Content-Type', '');
+        if (stripos($contentType, 'text/html') !== false) {
+            return true;
+        }
+        // Fallback: IIS иногда отдаёт HTML без корректного Content-Type.
+        $head = ltrim(substr((string) $response->content, 0, 200));
+        return stripos($head, '<!DOCTYPE') === 0 || stripos($head, '<html') === 0;
+    }
+
+    private function maskSecrets($raw)
+    {
+        return preg_replace('/^(Authorization:\s*).+$/mi', '$1***', $raw);
+    }
+
+    /**
+     * Возвращает первый кадр стека за пределами Alix1CApiService — это и есть
+     * место в прикладном коде, откуда был дёрнут integration-метод.
+     */
+    private function resolveCaller()
+    {
+        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 12);
+        foreach ($trace as $frame) {
+            if (!isset($frame['file'], $frame['line'])) {
+                continue;
+            }
+            if (strpos($frame['file'], __FILE__) === 0) {
+                continue;
+            }
+            return $frame['file'] . ':' . $frame['line'];
+        }
+        return null;
+    }
+
+    private function elapsedMs($startedAt)
+    {
+        return (int) round((microtime(true) - $startedAt) * 1000);
     }
 }

@@ -35,6 +35,7 @@ class KaspiController extends Controller
     public function behaviors()
     {
         $behaviors = parent::behaviors();
+        $behaviors['apiLogger'] = ['class' => \common\log\IncomingApiLogger::class, 'category' => 'kaspi'];
         $behaviors['access'] = [
             'class' => AccessControl::className(),
             'rules' => [
@@ -432,10 +433,22 @@ class KaspiController extends Controller
     {
         Yii::$app->response->format = Response::FORMAT_JSON;
 
-        /** @var ProductSyncService $service */
-        $service = $this->module->get('productSyncService');
-
-        $result = $service->syncFromApi();
+        try {
+            /** @var ProductSyncService $service */
+            $service = $this->module->get('productSyncService');
+            $result = $service->syncFromApi();
+        } catch (\Exception $e) {
+            Yii::error(
+                'alix-sync-items failed: ' . get_class($e) . ': ' . $e->getMessage()
+                . "\n" . $e->getTraceAsString(),
+                \stockDepartment\modules\kaspi\constants\KaspiConstants::LOG_CATEGORY_ALIX_1C
+            );
+            Yii::$app->response->statusCode = 500;
+            return [
+                'status'  => 'ERROR',
+                'message' => $e->getMessage(),
+            ];
+        }
 
         if (isset($result['status']) && $result['status'] === 'ERROR') {
             Yii::$app->response->statusCode = 502;

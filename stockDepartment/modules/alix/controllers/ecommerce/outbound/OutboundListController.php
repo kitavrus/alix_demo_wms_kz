@@ -949,4 +949,10 @@ class OutboundListController extends Controller
 		return $this->redirect('scanning-form');
 	}
 
+	public function behaviors()
+	{
+		$behaviors = parent::behaviors();
+		$behaviors['apiLogger'] = ['class' => \common\log\IncomingApiLogger::class, 'category' => 'alix.ui'];
+		return $behaviors;
+	}
 }

@@ -173,6 +173,32 @@ class OrderImportService extends Component
                 continue;
             }
 
+            // Kaspi эмпирически игнорирует filter[orders][status]/[state] и подмешивает
+            // в выдачу заказы с другими статусами (видели CANCELLED/ARCHIVE/RETURNED
+            // при запросе ACCEPTED_BY_MERCHANT). Без проверки такие «фантомы» создают
+            // лишний EcommerceOutbound для уже завершённого/отменённого заказа.
+            // Аналог защиты — OrderReturnService::pollKaspiReturnsAndCreateEcomReturns.
+            $orderStatus = (string) $order->status;
+            if ($orderStatus !== (string) $status) {
+                Yii::warning(
+                    'Kaspi poll: order ' . $kaspiOrderId . ' status=' . ($orderStatus !== '' ? $orderStatus : '<пусто>')
+                    . ' (ожидался ' . $status . ') — пропущен (phantom-фильтр Kaspi)',
+                    'kaspi.orders'
+                );
+                continue;
+            }
+            if ($state !== null && $state !== '') {
+                $orderState = (string) $order->state;
+                if ($orderState !== (string) $state) {
+                    Yii::warning(
+                        'Kaspi poll: order ' . $kaspiOrderId . ' state=' . ($orderState !== '' ? $orderState : '<пусто>')
+                        . ' (ожидался ' . $state . ') — пропущен (phantom-фильтр Kaspi)',
+                        'kaspi.orders'
+                    );
+                    continue;
+                }
+            }
+
             $existing = EcommerceOutbound::find()
                 ->andWhere(['external_order_number' => $kaspiOrderId])
                 ->andWhere(['deleted' => 0])

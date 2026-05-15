@@ -159,7 +159,7 @@ return [
         'kaspi' => [
             'class'         => 'stockDepartment\modules\kaspi\kaspi',
             'apiToken'      => '+vWV5nZLFOVPEisce0YR9doMiBlv0NKfclVukFWP1SM=',
-            'useMock'       => true,
+            'useMock'       => false,
             'httpLog'       => true,
             'kaspiClientId' => 103,
         ],
@@ -180,13 +180,9 @@ return [
                 //'order/order-process/set-product-status-printed-box-label/store_id/<store_id:\d+>'=>'order/order-process/set-product-status-printed-box-label',
                 //'user'=>'user/admin/index',
 								[
-//					'class' => 'yii\rest\UrlRule',
 					'pattern' => "alix/api/v1/stock",
 					"route"=>"alix/api/v1/stock/index",
-
-//					'pattern' => "wms/erenRetail/api/v1/stock",
-//					"route"=>"wms/erenRetail/api/v1/stock/index",
-					'verb'=>'POST'
+					'verb'=>'GET'
 				],
 				[
 //					'class' => 'yii\rest\UrlRule',
@@ -341,6 +337,28 @@ return [
                 [
                     'class' => 'yii\log\FileTarget',
                     'levels' => ['error', 'warning'],
+                    'except' => ['alix.1c', 'alix.1c.*', 'alix.ui', 'alix.ui.*', 'kaspi', 'kaspi.*'],
+                ],
+                [
+                    'class' => 'common\log\IntegrationFileTarget',
+                    'logFile' => '@runtime/logs/alix/1c.log',
+                    'categories' => ['alix.1c', 'alix.1c.*'],
+                    'levels' => ['error', 'warning', 'info', 'trace'],
+                    'logVars' => [],
+                ],
+                [
+                    'class' => 'common\log\IntegrationFileTarget',
+                    'logFile' => '@runtime/logs/alix/ui.log',
+                    'categories' => ['alix.ui', 'alix.ui.*'],
+                    'levels' => ['error', 'warning', 'info', 'trace'],
+                    'logVars' => [],
+                ],
+                [
+                    'class' => 'common\log\IntegrationFileTarget',
+                    'logFile' => '@runtime/logs/kaspi/kaspi.log',
+                    'categories' => ['kaspi', 'kaspi.*'],
+                    'levels' => ['error', 'warning', 'info', 'trace'],
+                    'logVars' => [],
                 ],
                 [
                     'class' => 'yii\log\EmailTarget',

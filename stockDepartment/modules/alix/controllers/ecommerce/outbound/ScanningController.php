@@ -428,4 +428,11 @@ class ScanningController extends Controller
 //        $order = $service->resendGetCargoLabel($orderNumber);
 //        return Yii::$app->response->sendFile(Yii::getAlias('@webroot/'.$order->path_to_cargo_label_file));
 //    }
+
+    public function behaviors()
+    {
+        $behaviors = parent::behaviors();
+        $behaviors['apiLogger'] = ['class' => \common\log\IncomingApiLogger::class, 'category' => 'alix.ui'];
+        return $behaviors;
+    }
 }

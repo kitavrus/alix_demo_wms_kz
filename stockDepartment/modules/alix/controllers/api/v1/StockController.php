@@ -22,6 +22,33 @@ class StockController extends Controller
         return $this->asJson(["response"=>$result]);
     }
 
+    /**
+     * GET /alix/api/v1/stock — текущие остатки склада в JSON.
+     *
+     * Источник: общий StockService (legacy таблица `stock`, status_availability=YES,
+     * группировка по штрихкоду). Формат ответа идентичен actionRemains.
+     */
+    public function actionIndex()
+    {
+        $items = [];
+        $stocks = (new StockService())->getAllStock();
+        foreach ($stocks as $stock) {
+            $items[] = [
+                "barcode"  => $stock["product_barcode"],
+                "article"  => $stock["product_model"],
+                "quantity" => $stock["product_quantity"],
+                "guid"     => $stock["product_sku"],
+            ];
+        }
+
+        return $this->asJson([
+            "status"  => "success",
+            "message" => "",
+            "code"    => "",
+            "items"   => $items,
+        ]);
+    }
+
     public function actionRemains()
     {
 		file_put_contents("StockController_actionRemains.log", 
@@ -52,6 +79,7 @@ class StockController extends Controller
 	public function behaviors()
 	{
 		$behaviors = parent::behaviors();
+		$behaviors['apiLogger'] = ['class' => \common\log\IncomingApiLogger::class];
 		$behaviors['access'] = [
 			'class' => AccessControl::className(),
 			'rules' => [
@@ -64,7 +92,7 @@ class StockController extends Controller
 		$behaviors['authenticator'] = [
 			'class' => HttpBearerAuth::class,
 //			'optional' => ['*'],
-			'only' => ['remains','echo'],
+			'only' => ['index','remains','echo'],
 
 		];
 		return $behaviors;

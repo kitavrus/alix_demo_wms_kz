@@ -24,14 +24,23 @@ class KaspiMockFactory
 
     /**
      * Тестовый флаг: имитирует эмпирически наблюдаемый «баг» Kaspi, когда фильтр
-     * filter[orders][status]=KASPI_DELIVERY_RETURN_REQUESTED игнорируется и в
-     * выдаче приходят заказы с другими статусами. Полезно для проверки
-     * defensive status-guard в OrderReturnService::pollKaspiReturnsAndCreateEcomReturns.
+     * filter[orders][status] игнорируется и в выдаче приходят заказы с другими
+     * статусами. Полезно для проверки defensive status-guard в:
+     *   - OrderReturnService::pollKaspiReturnsAndCreateEcomReturns (фильтр
+     *     KASPI_DELIVERY_RETURN_REQUESTED),
+     *   - OrderImportService::pollByStatus (фильтры APPROVED_BY_BANK/NEW и
+     *     ACCEPTED_BY_MERCHANT).
      *
      * При false (по умолчанию) мок честно фильтрует по статусу.
      *
+     * Для обратной совместимости старое имя `$simulateBuggyReturnFilter`
+     * остаётся работающим алиасом — см. `isBuggyFilterEnabled()`.
+     *
      * @var bool
      */
+    public static $simulateBuggyStatusFilter = false;
+
+    /** @deprecated Используйте $simulateBuggyStatusFilter — флаг универсальный. */
     public static $simulateBuggyReturnFilter = false;
 
     /**
@@ -372,17 +381,18 @@ class KaspiMockFactory
      * Вариант mock-ответа под фильтр filter[orders][status]. Честно фильтрует
      * фикстуры по `attributes.status`.
      *
-     * Если включён `$simulateBuggyReturnFilter` И фильтр запрашивает
-     * KASPI_DELIVERY_RETURN_REQUESTED — отдаём ВСЕ фикстуры (мимикрия эмпирически
-     * наблюдаемого поведения Kaspi, когда фильтр игнорируется). Это позволяет
-     * проверить, что defensive status-guard в OrderReturnService отсеивает
+     * Если включён `$simulateBuggyStatusFilter` (или legacy-алиас
+     * `$simulateBuggyReturnFilter`) — отдаём ВСЕ фикстуры независимо от
+     * запрошенного статуса (мимикрия эмпирически наблюдаемого поведения Kaspi,
+     * когда фильтр игнорируется). Это позволяет проверить, что defensive
+     * status-guard в OrderReturnService и OrderImportService отсеивает
      * заказы с неподходящим статусом.
      */
     public static function getOrdersApiResponseByStatus($status)
     {
         $fixtures = self::orderFixtures();
 
-        if (self::$simulateBuggyReturnFilter && $status === 'KASPI_DELIVERY_RETURN_REQUESTED') {
+        if (self::isBuggyFilterEnabled()) {
             $matching = array_values($fixtures);
         } else {
             $matching = [];
@@ -402,6 +412,11 @@ class KaspiMockFactory
                 'totalCount' => count($matching),
             ],
         ];
+    }
+
+    private static function isBuggyFilterEnabled()
+    {
+        return self::$simulateBuggyStatusFilter || self::$simulateBuggyReturnFilter;
     }
 
     public static function getOrdersList()

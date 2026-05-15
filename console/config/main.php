@@ -19,7 +19,7 @@ return [
         'kaspi' => [
             'class'         => 'stockDepartment\modules\kaspi\kaspi',
             'apiToken'      => '+vWV5nZLFOVPEisce0YR9doMiBlv0NKfclVukFWP1SM=',
-            'useMock'       => true,
+            'useMock'       => false,
             'httpLog'       => true,
             'kaspiClientId' => \common\modules\client\models\Client::CLIENT_ALIXAVIEN,
         ],
@@ -30,6 +30,21 @@ return [
                 [
                     'class' => 'yii\log\FileTarget',
                     'levels' => ['error', 'warning'],
+                    'except' => ['alix.1c', 'alix.1c.*', 'kaspi', 'kaspi.*'],
+                ],
+                [
+                    'class' => 'common\log\IntegrationFileTarget',
+                    'logFile' => '@runtime/logs/alix/1c.log',
+                    'categories' => ['alix.1c', 'alix.1c.*'],
+                    'levels' => ['error', 'warning', 'info', 'trace'],
+                    'logVars' => [],
+                ],
+                [
+                    'class' => 'common\log\IntegrationFileTarget',
+                    'logFile' => '@runtime/logs/kaspi/kaspi.log',
+                    'categories' => ['kaspi', 'kaspi.*'],
+                    'levels' => ['error', 'warning', 'info', 'trace'],
+                    'logVars' => [],
                 ],
             ],
         ],

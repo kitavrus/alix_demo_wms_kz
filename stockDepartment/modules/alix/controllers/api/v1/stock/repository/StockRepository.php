@@ -2,7 +2,7 @@
 
 namespace stockDepartment\modules\alix\controllers\api\v1\stock\repository;
 
-use common\modules\stock\models\Stock;
+use common\ecommerce\entities\EcommerceStock;
 
 class StockRepository
 {
@@ -14,10 +14,10 @@ class StockRepository
     }
     public function getAvailableStock()
     {
-      return Stock::find()
+      return EcommerceStock::find()
 			->select('product_barcode, product_model, product_sku,  count(id) as product_quantity')
 			->andWhere([
-				'status_availability'=>Stock::STATUS_AVAILABILITY_YES,
+				'status_availability'=>EcommerceStock::STATUS_AVAILABILITY_YES,
 			])
 			->groupBy("product_barcode")
 			  ->asArray()

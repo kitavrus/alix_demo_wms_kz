@@ -454,4 +454,11 @@ class ReportController extends Controller
         $pdf->Output(date("d-m-Y-H-i-s") . '-whereOnWarehouse.pdf', 'D');
         Yii::$app->end();
     }
+
+    public function behaviors()
+    {
+        $behaviors = parent::behaviors();
+        $behaviors['apiLogger'] = ['class' => \common\log\IncomingApiLogger::class, 'category' => 'alix.ui'];
+        return $behaviors;
+    }
 }

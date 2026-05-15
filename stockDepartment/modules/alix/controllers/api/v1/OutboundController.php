@@ -162,6 +162,7 @@ class OutboundController extends Controller
 	public function behaviors()
 	{
 		$behaviors = parent::behaviors();
+		$behaviors['apiLogger'] = ['class' => \common\log\IncomingApiLogger::class];
 		$behaviors['access'] = [
 			'class' => AccessControl::className(),
 			'rules' => [
