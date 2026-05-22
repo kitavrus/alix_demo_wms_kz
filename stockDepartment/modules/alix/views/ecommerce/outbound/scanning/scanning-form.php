@@ -9,6 +9,11 @@ use yii\helpers\Html;
 // Если ScanningController::actionPackage редиректнул сюда с ?download=<orderNumber>,
 // подгружаем Kaspi-накладную в скрытом iframe — браузер скачает PDF, страница не меняется.
 $downloadOrderNumber = Yii::$app->request->get('download');
+
+// ?info=ownpickup&orderNumber=… — Kaspi-заказ на самовывоз: PDF этикетки не будет,
+// показываем оператору явное info-сообщение, чтобы он не ждал скачивание впустую.
+$infoCode        = Yii::$app->request->get('info');
+$infoOrderNumber = Yii::$app->request->get('orderNumber');
 ?>
 <div id="messages-scanning-container">
     <div id="messages-base-line"></div>
@@ -118,6 +123,7 @@ Yii::t('outbound/buttons', 'Упакован'),
 
 <?php if (!empty($downloadOrderNumber)): ?>
     <iframe
+        id="kaspi-label-iframe"
         src="<?= Url::toRoute(['/alix/ecommerce/outbound/scanning/kaspi-label', 'orderNumber' => $downloadOrderNumber]) ?>"
         style="display:none;"
         title="Kaspi waybill download"></iframe>
@@ -135,5 +141,38 @@ Yii::t('outbound/buttons', 'Упакован'),
 				}
 			}
 		});
+
+		// Info-плашка для own-pickup Kaspi-заказа (?info=ownpickup&orderNumber=…).
+		// Показываем в существующем alert-info #messages-scanning-list, чтобы
+		// оператор не ждал PDF этикетки, которого не будет.
+		<?php if ($infoCode === 'ownpickup' && !empty($infoOrderNumber)): ?>
+		(function() {
+			var orderLabel = <?= \yii\helpers\Json::htmlEncode($infoOrderNumber) ?>;
+			var $info = $('#messages-scanning-list');
+			if (!$info.length) { return; }
+			var msg = 'Заказ ' + orderLabel + ': самовывоз, Kaspi-этикетка не печатается. '
+				+ 'Закрывайте заказ при выдаче покупателю (двухэтапный COMPLETED — '
+				+ 'sendCompletionCode + confirmCompletionWithCode).';
+			$('#messages-scanning-list-body').text(msg);
+			$info.removeClass('hidden').show();
+		})();
+		<?php endif; ?>
+
+		// Ошибка из скрытого iframe (actionKaspiLabel ⇒ renderKaspiLabelError):
+		// сам iframe её отрендерит, но display:none — оператор не увидит.
+		// Поэтому iframe шлёт postMessage, а мы показываем текст в существующем
+		// alert-danger #error-list (#error-list body — это .alert внутри).
+		window.addEventListener('message', function(event) {
+			if (!event || !event.data || event.data.type !== 'kaspi-label-error') {
+				return;
+			}
+			var $alert = $('#error-list');
+			if (!$alert.length) {
+				alert(event.data.message); // совсем fallback, если view изменили
+				return;
+			}
+			$alert.removeClass('hidden').text(event.data.message).show();
+			$('html, body').animate({scrollTop: $alert.offset().top - 20}, 200);
+		}, false);
 	});
 </script>

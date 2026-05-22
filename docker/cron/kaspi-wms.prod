@@ -1,0 +1,55 @@
+# /etc/cron.d/kaspi-wms
+#
+# Kaspi WMS cron schedule — PROD (alix-wms.nmdx.kz).
+#
+# Деплой:
+#   sudo install -m 0644 -o root -g root \
+#       /home/www/vhosts/alix-wms.kz/docker/cron/kaspi-wms.prod /etc/cron.d/kaspi-wms
+#   sudo mkdir -p /home/www/vhosts/alix-wms.kz/console/runtime/logs/kaspi
+#   sudo chown -R www-data:www-data /home/www/vhosts/alix-wms.kz/console/runtime/logs/kaspi
+#   sudo systemctl reload cron     # Debian/Ubuntu; иначе: sudo service cron reload
+#
+# ВАЖНО:
+#   - Файл /etc/cron.d/* должен быть БЕЗ расширения, 0644, owner root:root.
+#   - Формат: MIN HOUR DOM MON DOW USER COMMAND (USER обязателен).
+#
+# Логи:
+#   - cron-<name>.log в console/runtime/logs/kaspi/ — stdout/stderr (короткие
+#     summary-строки из CronController: «poll: status=ok, fetched=5, …»).
+#   - kaspi.log там же — полный HTTP-обмен с Kaspi и Alix 1C + warnings/errors
+#     (пишется через common\log\IntegrationFileTarget, см. console/config/main.php).
+#
+# Взаимоисключение через flock:
+#   kaspi-activate-pending-prices (*/30) и kaspi-rebuild-price-list (*/10) оба
+#   пишут в kaspi-price-list.xml/.xlsx (PriceListService::writeXml/writeExcel
+#   не атомарны: unlink → save). Расписания пересекаются в минуты 0 и 30 —
+#   при одновременной записи Kaspi может получить обрезанный XML / 404.
+#   Обёрнуты в `flock -n /tmp/kaspi-pricelist.lock`: при коллизии один тихо
+#   пропускается, через ≤10 минут отработает следующий тик.
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=""
+
+# --- Номенклатура (Alix 1C → product_v2 / product_barcodes_v2) -------------------
+*/30 * * * *   www-data   cd /home/www/vhosts/alix-wms.kz && php yii cron/alix-sync-items               >> /home/www/vhosts/alix-wms.kz/console/runtime/logs/kaspi/cron-alix-sync-items.log         2>&1
+
+# --- Приход заказов Kaspi -------------------------------------------------------
+*/15 * * * *   www-data   cd /home/www/vhosts/alix-wms.kz && php yii cron/kaspi-poll-orders             >> /home/www/vhosts/alix-wms.kz/console/runtime/logs/kaspi/cron-poll-orders.log            2>&1
+
+# --- Синхронизация статусов активных заказов -----------------------------------
+*/15 * * * *   www-data   cd /home/www/vhosts/alix-wms.kz && php yii cron/kaspi-sync-order-statuses     >> /home/www/vhosts/alix-wms.kz/console/runtime/logs/kaspi/cron-sync-statuses.log          2>&1
+
+# --- Передача завершённых заказов в 1С -----------------------------------------
+*/30 * * * *   www-data   cd /home/www/vhosts/alix-wms.kz && php yii cron/kaspi-sync-completed-to-1c    >> /home/www/vhosts/alix-wms.kz/console/runtime/logs/kaspi/cron-sync-to-1c.log             2>&1
+
+# --- Возвраты Kaspi → EcommerceReturn ------------------------------------------
+*/15 * * * *   www-data   cd /home/www/vhosts/alix-wms.kz && php yii cron/kaspi-poll-returns            >> /home/www/vhosts/alix-wms.kz/console/runtime/logs/kaspi/cron-poll-returns.log           2>&1
+
+# --- Активация отложенных цен (kaspi_price_history, PENDING → SENT) ------------
+# flock — взаимоисключение с kaspi-rebuild-price-list (пишут одни и те же файлы xlsx/xml).
+*/30 * * * *   www-data   /usr/bin/flock -n /tmp/kaspi-pricelist.lock -c 'cd /home/www/vhosts/alix-wms.kz && php yii cron/kaspi-activate-pending-prices >> /home/www/vhosts/alix-wms.kz/console/runtime/logs/kaspi/cron-activate-prices.log     2>&1'
+
+# --- Перегенерация публичного прайс-листа (kaspi-price-list.xml/.xlsx) ---------
+# flock — взаимоисключение с kaspi-activate-pending-prices.
+*/10 * * * *   www-data   /usr/bin/flock -n /tmp/kaspi-pricelist.lock -c 'cd /home/www/vhosts/alix-wms.kz && php yii cron/kaspi-rebuild-price-list      >> /home/www/vhosts/alix-wms.kz/console/runtime/logs/kaspi/cron-rebuild-price-list.log 2>&1'

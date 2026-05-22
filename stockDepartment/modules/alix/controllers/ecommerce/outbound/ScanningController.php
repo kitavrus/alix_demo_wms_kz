@@ -269,17 +269,27 @@ class ScanningController extends Controller
 		$outbound = \common\ecommerce\entities\EcommerceOutbound::find()
 			->andWhere(['order_number' => $orderNumber, 'deleted' => 0])
 			->one();
+		$isKaspiOrder = $outbound !== null && !empty($outbound->external_order_number);
 		// Waybill у Kaspi запрашиваем только для Kaspi-доставки. Для own-delivery /
 		// самовывоза (is_kaspi_delivery=0) ASSEMBLE не нужен и Kaspi вернёт 400.
-		if ($outbound !== null
-			&& !empty($outbound->external_order_number)
-			&& (int) $outbound->is_kaspi_delivery === 1
-		) {
+		if ($isKaspiOrder && (int) $outbound->is_kaspi_delivery === 1) {
 			// Остаёмся на scanning-form, но триггерим скачивание Kaspi-накладной
 			// через скрытый iframe (см. view). Кладовщик не теряет контекст формы.
 			return $this->redirect([
 				'/alix/ecommerce/outbound/scanning/scanning-form',
 				'download' => $orderNumber,
+			]);
+		}
+
+		// Kaspi-заказ на самовывоз: явная подсказка оператору, что Kaspi-этикетки
+		// здесь не будет и заказ закрывается при выдаче покупателю (двухэтапный
+		// sendCompletionCode + confirmCompletionWithCode). Без неё оператор ждёт
+		// PDF, которого не появится.
+		if ($isKaspiOrder && (int) $outbound->is_kaspi_delivery === 0) {
+			return $this->redirect([
+				'/alix/ecommerce/outbound/scanning/scanning-form',
+				'info'        => 'ownpickup',
+				'orderNumber' => $orderNumber,
 			]);
 		}
 
@@ -330,20 +340,24 @@ class ScanningController extends Controller
 		// иначе Kaspi отдаст ошибку «заказ уже в ASSEMBLE».
 		$alreadyFetched = !empty($outbound->kaspi_label_fetched_at);
 
+		// PHP 5.6: \Throwable отсутствует, поэтому ловим \Exception — KaspiApiException
+		// и Yii httpclient exceptions от него наследуются. Иначе исключение
+		// пролетит мимо catch и кладовщик увидит yii-debug страницу прямо в iframe.
 		try {
 			if (!$alreadyFetched) {
 				$kaspiService->transferToCourier($kaspiOrderId, ['numberOfSpace' => $numberOfSpace]);
 			}
 			$label = $kaspiService->getOrderLabel($kaspiOrderId);
-		} catch (\Throwable $e) {
+		} catch (\Exception $e) {
 			Yii::error('Kaspi label fetch failed for ' . $kaspiOrderId . ': ' . $e->getMessage(), __METHOD__);
-			Yii::$app->session->setFlash('danger', 'Kaspi: ' . $e->getMessage());
-			return $this->redirect('/alix/ecommerce/outbound/scanning/scanning-form');
+			return $this->renderKaspiLabelError($kaspiOrderId, $e);
 		}
 
 		if (!is_array($label) || empty($label['body'])) {
-			Yii::$app->session->setFlash('danger', 'Kaspi вернул пустую накладную');
-			return $this->redirect('/alix/ecommerce/outbound/scanning/scanning-form');
+			return $this->renderKaspiLabelError(
+				$kaspiOrderId,
+				new \RuntimeException('Kaspi вернул пустую накладную')
+			);
 		}
 
 		// Этикетка получена — фиксируем, чтобы заказ ушёл из списка «ждут этикетку».
@@ -360,6 +374,62 @@ class ScanningController extends Controller
 			$fileName,
 			['mimeType' => $mime, 'inline' => false]
 		);
+	}
+
+	/**
+	 * Рендер ошибки Kaspi-этикетки внутри iframe сканирующей формы.
+	 *
+	 * Сама форма (`scanning-form.php`) встраивает `actionKaspiLabel` в скрытый iframe.
+	 * Обычный `redirect` + flash оператор не видит — родительская страница не
+	 * перезагружается. Поэтому отдаём HTML с inline-скриптом, который через
+	 * `window.parent.postMessage` показывает сообщение в существующем `#error-list`
+	 * родителя; внутри iframe тоже виден текст ошибки — если оператор сделает
+	 * iframe видимым (debug) или его откроет CSP-fallback на новой вкладке.
+	 *
+	 * @param string     $kaspiOrderId
+	 * @param \Exception $e
+	 * @return string
+	 */
+	private function renderKaspiLabelError($kaspiOrderId, \Exception $e)
+	{
+		$httpStatus = '';
+		if ($e instanceof \stockDepartment\modules\kaspi\exceptions\KaspiApiException) {
+			$status = $e->getHttpStatusCode();
+			if ($status !== null && $status !== '') {
+				$httpStatus = ' (HTTP ' . (int) $status . ')';
+			}
+		}
+
+		$displayMessage = 'Kaspi-этикетка: ' . $e->getMessage() . $httpStatus
+			. ' [заказ ' . $kaspiOrderId . ']';
+
+		Yii::$app->response->format = Response::FORMAT_HTML;
+		Yii::$app->response->headers->set('Content-Type', 'text/html; charset=UTF-8');
+
+		$safeMessage = \yii\helpers\Html::encode($displayMessage);
+		$safeMessageJs = \yii\helpers\Json::htmlEncode($displayMessage);
+
+		return <<<HTML
+<!doctype html>
+<html lang="ru"><head><meta charset="UTF-8"><title>Kaspi label error</title>
+<style>
+body{margin:0;padding:16px;font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:#a94442;background:#f2dede;border:1px solid #ebccd1;}
+strong{display:block;margin-bottom:6px;}
+</style></head>
+<body>
+<strong>Ошибка Kaspi-этикетки</strong>
+<div>{$safeMessage}</div>
+<script>
+(function () {
+    try {
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage({type: 'kaspi-label-error', message: {$safeMessageJs}}, '*');
+        }
+    } catch (e) { /* parent на другом origin — игнор, текст уже виден в iframe */ }
+})();
+</script>
+</body></html>
+HTML;
 	}
 
 //    public function actionPrintBoxLabel()
